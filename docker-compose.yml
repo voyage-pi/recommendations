@@ -1,5 +1,5 @@
 services:
-  template:
+  recommendations:
     build: .
     container_name: ${SERVICE_NAME}
     ports:
