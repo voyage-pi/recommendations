@@ -24,5 +24,4 @@ class TripCreate(BaseModel):
 
 
 class TripResponse(BaseModel):
-    positive_tags: List[str]
-    negative_tags: List[str]
+    id: int

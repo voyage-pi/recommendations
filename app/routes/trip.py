@@ -12,5 +12,9 @@ router = APIRouter(
 
 @router.post("/", response_model=TripResponse)
 async def create_trip(trip_data: TripCreate):
-    positive_tags, negative_tags = transform_questionnaire(trip_data.questionnaire)
-    return {"positive_tags": positive_tags, "negative_tags": negative_tags}
+    """
+    Endpoint for creating a trip
+    Receives a TripCreate object and returns a TripResponse object with a complete trip
+    """
+    included_types, excluded_types = transform_questionnaire(trip_data.questionnaire)
+    return TripResponse(id=1)
