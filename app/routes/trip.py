@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
 router = APIRouter(
-    prefix="/api",
+    prefix="/trip",
     tags=["base"],
     responses={404: {"description": "Not found"}},
 )
 
 
-@router.get("/")
-async def read_root():
+@router.post("/")
+async def create_trip():
     return {"Hello": "World!"}
