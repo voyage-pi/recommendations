@@ -6,3 +6,15 @@ services:
       - ENV_VAR=example
     volumes:
       - ./app:/app
+  redis:
+    image: "redis:alpine"
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
+    driver: local
