@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class QuestionType(str, Enum):
     SCALE = "scale"
+    SELECT = "select"
 
 
 class Answer(BaseModel):
