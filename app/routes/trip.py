@@ -1,3 +1,4 @@
+from app.handlers.attribute_handler import questionnaire_to_attributes
 from fastapi import APIRouter
 from app.schemas.Questionnaire import TripCreate, TripResponse
 from app.handlers.questionnaire_handler import transform_questionnaire
@@ -16,5 +17,5 @@ async def create_trip(trip_data: TripCreate):
     Endpoint for creating a trip
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
-    included_types, excluded_types = transform_questionnaire(trip_data.questionnaire)
+    included_types, excluded_types = questionnaire_to_attributes(trip_data.questionnaire)
     return TripResponse(id=1)
