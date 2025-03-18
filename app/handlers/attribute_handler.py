@@ -6,8 +6,11 @@ import json
 def questionnaire_to_attributes(answers:List[Answer])->Tuple[List[str],List[str]]:
     included_types:List[str]=[]
     excluded_types:List[str]=[]
+
+    with open("../attributes/attributes_answer.json",'r')  as file:
+        data = json.load(file)
     for ans in answers: 
-        attrsIncluded,attrsExcluded=answers_attributes(ans);
+        attrsIncluded,attrsExcluded=answers_attributes(ans,data);
         included_types.extend(attrsIncluded)
         excluded_types.extend(attrsExcluded)
     return included_types,excluded_types
@@ -15,13 +18,11 @@ def questionnaire_to_attributes(answers:List[Answer])->Tuple[List[str],List[str]
 #Reads the json with the attributes of each question of the forms
 #Then makes the collection of the set of attributes depending on the question type
 #Then applies the possible conditions
-def answers_attributes(answer:Answer)->Tuple[List[str],List[str]]:
+def answers_attributes(answer:Answer,data)->Tuple[List[str],List[str]]:
     ansType:QuestionType= answer.type
     ansId:str= str(answer.question_id)
     ansValues=answer.value 
 
-    with open("../attributes/attributes_answer.json",'r')  as file:
-        data = json.load(file)
     if ansType == "scale":
         return data[ansId],[]
     elif ansType == "select":
