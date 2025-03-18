@@ -12,21 +12,21 @@ def load_activity_types():
         return json.load(f)
 
 
-class ActivityType(str, Enum):
-    """
-    Enum representing different activity types.
-    These values are derived from the attributes_answer.json file.
-    """
+_activity_data = load_activity_types()
+_activity_types = list(_activity_data.get("durations", {}).keys())
 
-    def __new__(cls, value):
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        return obj
+ActivityType = Enum(
+    "ActivityType", {k.upper().replace("-", "_"): k for k in _activity_types}, type=str
+)
 
-    @classmethod
-    def _missing_(cls, value):
-        # in case there are values missing
-        return cls(value)
+
+# handle missing values
+def _missing_(cls, value):
+    """Handle missing enum values by creating them on the fly"""
+    return cls(value)
+
+
+ActivityType._missing_ = classmethod(_missing_)
 
 
 class TimeSlot(str, Enum):
