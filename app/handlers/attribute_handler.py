@@ -2,13 +2,19 @@ from typing import  List,Tuple
 from app.schemas.Questionnaire import Answer,QuestionType 
 from enum import Enum
 import json
+from pathlib import Path
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent  # Diretório do script atual
+ATTRIBUTES_PATH = BASE_DIR / "attributes" / "attributes_answer.json"
 
 def questionnaire_to_attributes(answers:List[Answer])->Tuple[List[str],List[str]]:
     included_types:List[str]=[]
     excluded_types:List[str]=[]
 
-    with open("../attributes/attributes_answer.json",'r')  as file:
+    with open(ATTRIBUTES_PATH)  as file:
         data = json.load(file)
+
     for ans in answers: 
         attrsIncluded,attrsExcluded=answers_attributes(ans,data);
         included_types.extend(attrsIncluded)
@@ -20,7 +26,7 @@ def questionnaire_to_attributes(answers:List[Answer])->Tuple[List[str],List[str]
 #Then applies the possible conditions
 def answers_attributes(answer:Answer,data)->Tuple[List[str],List[str]]:
     ansType:QuestionType= answer.type
-    ansId:str= str(answer.question_id)
+    ansId:str= str(answer.question_id+1)
     ansValues=answer.value 
 
     if ansType == "scale":
