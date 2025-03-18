@@ -53,18 +53,21 @@ class TimeSlot(str, Enum):
     MORNING = "morning"
     AFTERNOON = "afternoon"
 
-
 class PlaceInfo(BaseModel):
-    place_id: str
+    id: str
     name: str
+    location: Optional[Dict] = None
     types: List[str]
-    rating: Optional[float] = None
-    user_ratings_total: Optional[int] = None
-    vicinity: Optional[str] = None
-    formatted_address: Optional[str] = None
-    geometry: Optional[Dict] = None
+    photos: Optional[List] = None
+    accessibility_options: Optional[Dict] = None
     opening_hours: Optional[Dict] = None
-
+    price_range: Optional[str] = None
+    rating: Optional[float] = None
+    international_phone_number: Optional[str] = None
+    national_phone_number: Optional[str] = None
+    allows_dogs: Optional[bool] = None
+    good_for_children: Optional[bool] = None
+    good_for_groups: Optional[bool] = None
 
 class Activity(BaseModel):
     place: PlaceInfo
