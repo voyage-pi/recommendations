@@ -35,7 +35,7 @@ async def create_trip(trip_data: TripCreate):
     places: List[PlaceInfo] = await get_places_recommendations(
 		latitude=trip_data.coordinates.latitude,
 		longitude=trip_data.coordinates.longitude,
-		place_types=included_types
+		place_types=(included_types,excluded_types)
 	)
 
 
@@ -52,7 +52,7 @@ async def create_trip(trip_data: TripCreate):
 	# Format response with places and their start/end times
     formatted_places = format_itinerary_response(itinerary)
 
-	return ItineraryResponse(
+    return ItineraryResponse(
 		id=itinerary.id,
 		places=formatted_places
 	)
