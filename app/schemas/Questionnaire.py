@@ -1,6 +1,7 @@
 from typing import Any, List
 from enum import Enum
 from pydantic import BaseModel
+from app.schemas.Activities import TripItinerary, TemplateType
 
 
 class QuestionType(str, Enum):
@@ -26,3 +27,5 @@ class TripCreate(BaseModel):
 
 class TripResponse(BaseModel):
     id: int
+    itinerary: TripItinerary
+    template_type: TemplateType

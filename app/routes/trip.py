@@ -21,6 +21,7 @@ async def create_trip(trip_data: TripCreate):
     Endpoint for creating a trip
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
+
     # List[str], List[str]
     included_types, excluded_types = questionnaire_to_attributes(
         trip_data.questionnaire
@@ -59,4 +60,6 @@ async def create_trip(trip_data: TripCreate):
 
     return TripResponse(
         id=itinerary.id,
+        itinerary=itinerary,
+        template_type=template_type,
     )
