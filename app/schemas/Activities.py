@@ -2,51 +2,31 @@ from typing import List, Dict, Optional
 from enum import Enum
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+import json
+import os
+
+
+def load_activity_types():
+    config_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(config_dir, "activity_types.json"), "r") as f:
+        return json.load(f)
 
 
 class ActivityType(str, Enum):
-    # Google Places API main types
-    AMUSEMENT_PARK = "amusement_park"
-    AQUARIUM = "aquarium"
-    ART_GALLERY = "art_gallery"
-    BAKERY = "bakery"
-    BAR = "bar"
-    CAFE = "cafe"
-    CASINO = "casino"
-    MUSEUM = "museum"
-    NIGHT_CLUB = "night_club"
-    PARK = "park"
-    RESTAURANT = "restaurant"
-    SHOPPING_MALL = "shopping_mall"
-    SPA = "spa"
-    TOURIST_ATTRACTION = "tourist_attraction"
-    ZOO = "zoo"
+    """
+    Enum representing different activity types.
+    These values are derived from the attributes_answer.json file.
+    """
 
+    def __new__(cls, value):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        return obj
 
-# Default durations in minutes for each activity type
-ACTIVITY_DURATIONS: Dict[ActivityType, int] = {
-    ActivityType.AMUSEMENT_PARK: 180,  # 3 hours
-    ActivityType.AQUARIUM: 120,  # 2 hours
-    ActivityType.ART_GALLERY: 90,  # 1.5 hours
-    ActivityType.BAKERY: 30,  # 30 minutes
-    ActivityType.BAR: 60,  # 1 hour
-    ActivityType.CAFE: 45,  # 45 minutes
-    ActivityType.CASINO: 120,  # 2 hours
-    ActivityType.MUSEUM: 120,  # 2 hours
-    ActivityType.NIGHT_CLUB: 180,  # 3 hours
-    ActivityType.PARK: 90,  # 1.5 hours
-    ActivityType.RESTAURANT: 90,  # 1.5 hours
-    ActivityType.SHOPPING_MALL: 120,  # 2 hours
-    ActivityType.SPA: 120,  # 2 hours
-    ActivityType.TOURIST_ATTRACTION: 60,  # 1 hour
-    ActivityType.ZOO: 180,  # 3 hours
-}
-
-
-class TemplateType(str, Enum):
-    LIGHT = "light"
-    MODERATE = "moderate"
-    PACKED = "packed"
+    @classmethod
+    def _missing_(cls, value):
+        # in case there are values missing
+        return cls(value)
 
 
 class TimeSlot(str, Enum):
@@ -85,3 +65,22 @@ class TripItinerary(BaseModel):
     start_date: datetime
     end_date: datetime
     days: List[DayItinerary] = []
+
+
+class TemplateType(str, Enum):
+    LIGHT = "light"
+    MODERATE = "moderate"
+    PACKED = "packed"
+
+
+def get_activity_duration(activity_type: ActivityType) -> int:
+    """
+    Get the duration for a specific activity type.
+    Falls back to default duration if not specified.
+    """
+    activity_data = load_activity_types()
+    durations = activity_data.get("durations", {})
+
+    default_duration = 90
+
+    return durations.get(str(activity_type), default_duration)

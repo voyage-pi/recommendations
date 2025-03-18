@@ -3,13 +3,13 @@ from typing import List, Dict, Tuple
 import random
 from app.schemas.Activities import (
     ActivityType,
-    ACTIVITY_DURATIONS,
     TemplateType,
     TimeSlot,
     PlaceInfo,
     Activity,
     DayItinerary,
     TripItinerary,
+    get_activity_duration,
 )
 
 
@@ -51,12 +51,12 @@ def filter_places_by_type(
     return filtered_places
 
 
-def get_activity_duration(place: PlaceInfo) -> int:
+def determine_activity_duration(place: PlaceInfo) -> int:
     """Determine the duration for a specific place based on its primary type"""
     for place_type in place.types:
         try:
             activity_type = ActivityType(place_type)
-            return ACTIVITY_DURATIONS.get(activity_type, 60)
+            return get_activity_duration(activity_type)
         except ValueError:
             continue
 
@@ -71,7 +71,8 @@ def get_activity_type(place: PlaceInfo) -> ActivityType:
         except ValueError:
             continue
 
-    return ActivityType.TOURIST_ATTRACTION  # Default type
+    # Default to tourist_attraction or a common type that should be in all deployments
+    return ActivityType("tourist_attraction")
 
 
 def schedule_activities(
@@ -97,7 +98,7 @@ def schedule_activities(
     selected_places = places[:count] if len(places) >= count else places
 
     for place in selected_places:
-        duration = get_activity_duration(place)
+        duration = determine_activity_duration(place)
         activity_type = get_activity_type(place)
 
         # Create activity

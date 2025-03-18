@@ -1,12 +1,10 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
 from fastapi import APIRouter
 from app.schemas.Questionnaire import TripCreate, TripResponse
-from app.handlers.questionnaire_handler import transform_questionnaire
 from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary
 from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
-from app.schemas.Activities import ItineraryResponse
 from typing import List
 
 
@@ -23,9 +21,17 @@ async def create_trip(trip_data: TripCreate):
     Endpoint for creating a trip
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
-    included_types, excluded_types = questionnaire_to_attributes(trip_data.questionnaire)
-    included_activity_types = [ActivityType(t) for t in included_types]
-    excluded_activity_types = [ActivityType(t) for t in excluded_types]
+    # List[str], List[str]
+    included_types, excluded_types = questionnaire_to_attributes(
+        trip_data.questionnaire
+    )
+
+    included_activity_types: List[ActivityType] = [
+        ActivityType(t) for t in included_types
+    ]
+    excluded_activity_types: List[ActivityType] = [
+        ActivityType(t) for t in excluded_types
+    ]
 
     start_date = datetime.now() + timedelta(days=1)
     end_date = start_date + timedelta(days=2)
@@ -33,26 +39,24 @@ async def create_trip(trip_data: TripCreate):
     template_type = TemplateType.MODERATE
 
     places: List[PlaceInfo] = await get_places_recommendations(
-		latitude=trip_data.coordinates.latitude,
-		longitude=trip_data.coordinates.longitude,
-		place_types=included_types
-	)
+        latitude=trip_data.coordinates.latitude,
+        longitude=trip_data.coordinates.longitude,
+        place_types=included_types,
+    )
 
-
-	# Generate itinerary
+    # Generate itinerary
     itinerary: TripItinerary = generate_itinerary(
-		places=places,
-		included_types=included_activity_types,
-		excluded_types=excluded_activity_types,
-		start_date=start_date,
-		end_date=end_date,
-		template_type=template_type
-	)
+        places=places,
+        included_types=included_activity_types,
+        excluded_types=excluded_activity_types,
+        start_date=start_date,
+        end_date=end_date,
+        template_type=template_type,
+    )
 
-	# Format response with places and their start/end times
+    # Format response with places and their start/end times
     formatted_places = format_itinerary_response(itinerary)
 
-	return ItineraryResponse(
-		id=itinerary.id,
-		places=formatted_places
-	)
+    return TripResponse(
+        id=itinerary.id,
+    )
