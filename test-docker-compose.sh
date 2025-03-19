@@ -23,8 +23,8 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # Check if docker-compose.yml exists in current directory
-if [ ! -f "docker-compose.yml" ]; then
-    echo -e "${RED}Error: docker-compose.yml not found in current directory.${NC}"
+if [ ! -f "docker-compose.yaml" ]; then
+    echo -e "${RED}Error: docker-compose.yaml not found in current directory.${NC}"
     exit 1
 fi
 
