@@ -35,6 +35,7 @@ async def create_trip(trip_data: TripCreate):
     ]
 
     start_date = datetime.now() + timedelta(days=1)
+
     end_date = start_date + timedelta(days=2)
 
     template_type = TemplateType.MODERATE
@@ -42,7 +43,7 @@ async def create_trip(trip_data: TripCreate):
     places: List[PlaceInfo] = await get_places_recommendations(
         latitude=trip_data.coordinates.latitude,
         longitude=trip_data.coordinates.longitude,
-        place_types=included_types,
+        place_types=(included_types, excluded_types),
     )
 
     # Generate itinerary
@@ -57,6 +58,8 @@ async def create_trip(trip_data: TripCreate):
 
     # Format response with places and their start/end times
     formatted_places = format_itinerary_response(itinerary)
+
+    print(formatted_places)
 
     return TripResponse(
         id=itinerary.id,

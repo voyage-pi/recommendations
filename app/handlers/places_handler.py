@@ -1,11 +1,13 @@
-from typing import List
+from typing import List, Tuple
 from app.schemas.Activities import PlaceInfo
+import requests as request
+import logging 
 
-
+logger = logging.getLogger('uvicorn.error')
 async def get_places_recommendations(
     latitude: float,
     longitude: float,
-    place_types: List[str],
+    place_types: Tuple[List[str],List[str]],
     radius: int = 5000,  # 5km radius
     max_results: int = 20,
 ) -> List[PlaceInfo]:
@@ -13,19 +15,48 @@ async def get_places_recommendations(
     Get place recommendations from Google Places API or another service
     This is a placeholder for your actual service wrapper implementation
     """
-    sample_places = [
-        PlaceInfo(
-            place_id=f"place_{i}",
-            name=f"Sample Place {i}",
-            types=[place_type] if i < len(place_types) else ["tourist_attraction"],
-            rating=4.5,
-            vicinity=f"Sample Address {i}",
-            geometry={"location": {"lat": latitude, "lng": longitude}},
-        )
-        for i in range(max_results)
-        for place_type in (
-            place_types[:1] if i < len(place_types) else ["tourist_attraction"]
-        )
-    ]
+    logger.debug("Entered the function")
 
-    return sample_places[:max_results]
+    included_types=place_types[0]
+    excluded_types=place_types[1]
+    url="http://host.docker.internal:8080/places"
+    request_body={
+        "location":{
+            "latitude":latitude,
+            "longitude":longitude,
+        },
+        "radius":radius,
+        "includedTypes":included_types,
+        "excludedTypes":excluded_types,
+    }
+    logging.debug(f"Request body {request_body}")
+    response= request.post(url,json=request_body)     
+    logging.debug(f"response {response.json()}")
+    status = response.status_code
+    if status == 200:
+        responseBody=response.json().get("response");
+        places_google=responseBody.get("places")
+        logging.debug(f"Places:{places_google}")
+        places:List[PlaceInfo] =[]
+        for data in places_google:
+            place = PlaceInfo(
+                id=data.get("ID"),
+                name=data.get("name"),
+                location=data.get("location"),
+                types=data.get("types", []),
+                photos=data.get("photos", []),
+                accessibility_options=data.get("accessibilityOptions", {}),
+                opening_hours=data.get("OpeningHours", {}),
+                price_range=data.get("priceRange"),
+                rating=data.get("rating"),
+                international_phone_number=data.get("internationalPhoneNumber"),
+                national_phone_number=data.get("nationalPhoneNumber"),
+                allows_dogs=data.get("allowsDogs"),
+                good_for_children=data.get("goodForChildren"),
+                good_for_groups=data.get("goodForGroups"),
+            )
+            places.append(place)
+        return places
+    else:
+        logging.debug(f"Response status:{status}")
+        return []

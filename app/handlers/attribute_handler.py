@@ -1,5 +1,6 @@
 from typing import List, Tuple
 from app.schemas.Questionnaire import Answer, QuestionType
+from enum import Enum
 import json
 from pathlib import Path
 
