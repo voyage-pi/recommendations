@@ -19,7 +19,11 @@ async def get_places_recommendations(
 
     included_types=place_types[0]
     excluded_types=place_types[1]
+<<<<<<< Updated upstream
     url="http://places-wrapper:8080/places"
+=======
+    url="http://place-wrapper:8080/places"
+>>>>>>> Stashed changes
     request_body={
         "location":{
             "latitude":latitude,
