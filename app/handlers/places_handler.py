@@ -19,7 +19,11 @@ async def get_places_recommendations(
 
     included_types=place_types[0]
     excluded_types=place_types[1]
-    url="http://host.docker.internal:8080/places"
+<<<<<<< Updated upstream
+    url="http://places-wrapper:8080/places"
+=======
+    url="http://place-wrapper:8080/places"
+>>>>>>> Stashed changes
     request_body={
         "location":{
             "latitude":latitude,
@@ -29,14 +33,11 @@ async def get_places_recommendations(
         "includedTypes":included_types,
         "excludedTypes":excluded_types,
     }
-    logging.debug(f"Request body {request_body}")
     response= request.post(url,json=request_body)     
-    logging.debug(f"response {response.json()}")
     status = response.status_code
     if status == 200:
         responseBody=response.json().get("response");
         places_google=responseBody.get("places")
-        logging.debug(f"Places:{places_google}")
         places:List[PlaceInfo] =[]
         for data in places_google:
             place = PlaceInfo(
@@ -59,4 +60,5 @@ async def get_places_recommendations(
         return places
     else:
         logging.debug(f"Response status:{status}")
+        logging.debug(f"Response:{response}")
         return []
