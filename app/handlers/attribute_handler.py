@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from app.schemas.Questionnaire import Answer, QuestionType
+from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 from enum import Enum
 import json
 from pathlib import Path
@@ -9,35 +10,60 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # Diretório do script atual
 ATTRIBUTES_PATH = BASE_DIR / "attributes" / "attributes_answer.json"
 
 
-def questionnaire_to_attributes(answers: List[Answer]) -> Tuple[List[str], List[str]]:
+def questionnaire_to_attributes(answers: List[Answer]) -> Tuple[List[str], List[str], Dict[str, float]]:
     included_types: List[str] = []
     excluded_types: List[str] = []
+    generic_type_scores: Dict[str, float] = {}
 
     with open(ATTRIBUTES_PATH) as file:
         data = json.load(file)
 
     for ans in answers:
-        attrsIncluded, attrsExcluded = answers_attributes(ans, data)
+        attrsIncluded, attrsExcluded, scores = answers_attributes(ans, data)
         included_types.extend(attrsIncluded)
         excluded_types.extend(attrsExcluded)
-    return included_types, excluded_types
+        
+        # Update generic type scores
+        for generic_type, score in scores.items():
+            if generic_type in generic_type_scores:
+                generic_type_scores[generic_type] = max(generic_type_scores[generic_type], score)
+            else:
+                generic_type_scores[generic_type] = score
+
+    return included_types, excluded_types, generic_type_scores
 
 
 # Reads the json with the attributes of each question of the forms
 # Then makes the collection of the set of attributes depending on the question type
 # Then applies the possible conditions
-def answers_attributes(answer: Answer, data) -> Tuple[List[str], List[str]]:
+def answers_attributes(answer: Answer, data) -> Tuple[List[str], List[str], Dict[str, float]]:
     ansType: QuestionType = answer.type
     ansId: str = str(answer.question_id + 1)
     ansValues = answer.value
+    generic_type_scores: Dict[str, float] = {}
+    included_types: List[str] = []
+    excluded_types: List[str] = []
 
     if ansType == "scale":
-        return data[ansId], []
+        # For scale questions, use the value directly as the score
+        score = float(ansValues)
+        generic_type = data[ansId]
+        if generic_type:
+            generic_type_scores[generic_type] = score
+            # Get all specific types for this generic type
+            included_types = [t for t, g in SPECIFIC_TO_GENERIC.items() if g == generic_type]
+        return included_types, excluded_types, generic_type_scores
+    
     elif ansType == "select":
-        # selected is the union of attributes of the several selected cases
-        # the ansValues is of type: [1,2,4] being the numbers the options selected
+        # For select questions, use 1.0 as the score for selected options
         options: dict = data[ansId]
-        selected = [options[k] for i, k in enumerate(options) if i in ansValues]
-        return selected, []
+        for i, k in enumerate(options):
+            if i in ansValues:
+                generic_type = options[k]
+                if generic_type:
+                    generic_type_scores[generic_type] = 1.0
+                    # Get all specific types for this generic type
+                    included_types.extend([t for t, g in SPECIFIC_TO_GENERIC.items() if g == generic_type])
+        return included_types, excluded_types, generic_type_scores
     else:
-        return [], []
+        return [], [], {}

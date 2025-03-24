@@ -1,7 +1,8 @@
-from typing import Any, List
+from typing import Any, List, Dict
 from enum import Enum
 from pydantic import BaseModel
 from app.schemas.Activities import TripItinerary, TemplateType
+from app.schemas.GenericTypes import GenericType
 
 
 class QuestionType(str, Enum):
@@ -29,3 +30,4 @@ class TripResponse(BaseModel):
     id: int
     itinerary: TripItinerary
     template_type: TemplateType
+    generic_type_scores: Dict[str, float]
