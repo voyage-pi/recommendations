@@ -23,7 +23,15 @@ ActivityType = Enum(
 # handle missing values
 def _missing_(cls, value):
     """Handle missing enum values by creating them on the fly"""
-    return cls(value)
+    # Create a new enum member with the given value
+    # Convert to uppercase and replace dashes with underscores for the name
+    name = str(value).upper().replace("-", "_")
+    member = str.__new__(cls, value)
+    member._name_ = name
+    member._value_ = value
+    # Add it to the enum class
+    cls._value2member_map_[value] = member
+    return member
 
 
 ActivityType._missing_ = classmethod(_missing_)
@@ -69,6 +77,15 @@ class TripItinerary(BaseModel):
     end_date: datetime
     days: List[DayItinerary] = []
 
+    def __str__(self):
+        activies = ""
+        for day in self.days:
+            activies += f"Day {day.date}:\n"
+            for activity in day.morning_activities:
+                activies += f"  {activity.activity_type}: {activity.place.name} from {activity.start_time} to {activity.end_time}\n"
+            for activity in day.afternoon_activities:
+                activies += f"  {activity.activity_type}: {activity.place.name} from {activity.start_time} to {activity.end_time}\n"
+        return activies
 
 class TemplateType(str, Enum):
     LIGHT = "light"

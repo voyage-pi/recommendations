@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import random
 from app.schemas.Activities import (
     ActivityType,
@@ -11,6 +11,7 @@ from app.schemas.Activities import (
     TripItinerary,
     get_activity_duration,
 )
+from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 
 
 def get_activities_count(template_type: TemplateType) -> Dict[TimeSlot, int]:
@@ -118,6 +119,107 @@ def schedule_activities(
     return activities
 
 
+def distribute_activities_by_scores(
+    places: List[PlaceInfo],
+    generic_type_scores: Dict[str, float],
+    activities_count: Dict[TimeSlot, int]
+) -> Dict[TimeSlot, Dict[str, int]]:
+    """
+    Distributes activities for each time slot based on category scores.
+    Returns a dictionary with time slots as keys and category distributions as values.
+    """
+    # Calculate total number of activities for the day
+    total_activities = sum(activities_count.values())
+    
+    if not generic_type_scores or total_activities == 0:
+        # If no scores, return empty distribution
+        return {
+            TimeSlot.MORNING: {},
+            TimeSlot.AFTERNOON: {}
+        }
+    
+    # Normalize scores
+    total_score = sum(generic_type_scores.values())
+    if total_score == 0:
+        total_score = 1  # Avoid division by zero
+    
+    normalized_scores = {
+        category: score / total_score
+        for category, score in generic_type_scores.items()
+    }
+    
+    # Count available places by generic type
+    places_by_generic_type = {}
+    for place in places:
+        for place_type in place.types:
+            if place_type in SPECIFIC_TO_GENERIC:
+                generic_type = SPECIFIC_TO_GENERIC[place_type]
+                if generic_type not in places_by_generic_type:
+                    places_by_generic_type[generic_type] = 0
+                places_by_generic_type[generic_type] += 1
+    
+    # Create initial distribution based on scores
+    raw_distribution = {}
+    for category, score in normalized_scores.items():
+        # Calculate desired count, but don't allocate more than available places
+        desired_count = int(round(score * total_activities))
+        if category in places_by_generic_type:
+            raw_distribution[category] = min(desired_count, places_by_generic_type[category])
+        else:
+            raw_distribution[category] = 0
+    
+    # Adjust to match total_activities (might be slightly off due to rounding)
+    current_total = sum(raw_distribution.values())
+    
+    # Distribute activities to each time slot
+    result = {
+        TimeSlot.MORNING: {},
+        TimeSlot.AFTERNOON: {}
+    }
+    
+    # First, allocate morning activities
+    morning_count = activities_count[TimeSlot.MORNING]
+    remaining_distribution = raw_distribution.copy()
+    
+    # Prioritize categories with higher scores for morning
+    sorted_categories = sorted(
+        remaining_distribution.keys(),
+        key=lambda x: normalized_scores.get(x, 0),
+        reverse=True
+    )
+    
+    morning_allocated = 0
+    for category in sorted_categories:
+        if morning_allocated >= morning_count:
+            break
+        
+        category_count = remaining_distribution[category]
+        to_allocate = min(category_count, morning_count - morning_allocated)
+        
+        if to_allocate > 0:
+            result[TimeSlot.MORNING][category] = to_allocate
+            remaining_distribution[category] -= to_allocate
+            morning_allocated += to_allocate
+    
+    # Then, allocate afternoon activities from what remains
+    afternoon_count = activities_count[TimeSlot.AFTERNOON]
+    afternoon_allocated = 0
+    
+    for category in sorted_categories:
+        if afternoon_allocated >= afternoon_count:
+            break
+        
+        category_count = remaining_distribution[category]
+        to_allocate = min(category_count, afternoon_count - afternoon_allocated)
+        
+        if to_allocate > 0:
+            result[TimeSlot.AFTERNOON][category] = to_allocate
+            remaining_distribution[category] -= to_allocate
+            afternoon_allocated += to_allocate
+    
+    return result
+
+
 def generate_itinerary(
     places: List[PlaceInfo],
     included_types: List[ActivityType],
@@ -125,40 +227,106 @@ def generate_itinerary(
     start_date: datetime,
     end_date: datetime,
     template_type: TemplateType = TemplateType.MODERATE,
+    generic_type_scores: Optional[Dict[str, float]] = None,
 ) -> TripItinerary:
     """Generate a complete trip itinerary"""
     filtered_places = filter_places_by_type(places, included_types, excluded_types)
     activities_count = get_activities_count(template_type)
+    
+    # Group places by generic type
+    places_by_type = {}
+    for place in filtered_places:
+        for place_type in place.types:
+            if place_type in SPECIFIC_TO_GENERIC:
+                generic_type = SPECIFIC_TO_GENERIC[place_type]
+                if generic_type not in places_by_type:
+                    places_by_type[generic_type] = []
+                places_by_type[generic_type].append(place)
 
     days = []
     current_date = start_date
-    place_index = 0
+    used_place_ids = set()
 
     while current_date <= end_date:
         day_itinerary = DayItinerary(date=current_date)
-
-        # Morning activities
-        morning_count = activities_count[TimeSlot.MORNING]
-        remaining_places = filtered_places[place_index:]
-        morning_activities = schedule_activities(
-            current_date, TimeSlot.MORNING, remaining_places, morning_count
-        )
-        day_itinerary.morning_activities = morning_activities
-        place_index += len(morning_activities)
-
-        # Afternoon activities
-        afternoon_count = activities_count[TimeSlot.AFTERNOON]
-        remaining_places = filtered_places[place_index:]
-        afternoon_activities = schedule_activities(
-            current_date, TimeSlot.AFTERNOON, remaining_places, afternoon_count
-        )
-        day_itinerary.afternoon_activities = afternoon_activities
-        place_index += len(afternoon_activities)
+        
+        # If we have scores, distribute activities based on scores
+        if generic_type_scores:
+            distribution = distribute_activities_by_scores(
+                filtered_places, 
+                generic_type_scores, 
+                activities_count
+            )
+            
+            # Morning activities
+            morning_activities = []
+            for category, count in distribution[TimeSlot.MORNING].items():
+                if category in places_by_type and count > 0:
+                    category_places = [p for p in places_by_type[category] if p.id not in used_place_ids]
+                    selected_places = category_places[:count]
+                    
+                    if selected_places:
+                        activities = schedule_activities(
+                            current_date, 
+                            TimeSlot.MORNING, 
+                            selected_places, 
+                            len(selected_places)
+                        )
+                        morning_activities.extend(activities)
+                        for place in selected_places:
+                            used_place_ids.add(place.id)
+            
+            day_itinerary.morning_activities = morning_activities
+            
+            # Afternoon activities
+            afternoon_activities = []
+            for category, count in distribution[TimeSlot.AFTERNOON].items():
+                if category in places_by_type and count > 0:
+                    category_places = [p for p in places_by_type[category] if p.id not in used_place_ids]
+                    selected_places = category_places[:count]
+                    
+                    if selected_places:
+                        activities = schedule_activities(
+                            current_date, 
+                            TimeSlot.AFTERNOON, 
+                            selected_places, 
+                            len(selected_places)
+                        )
+                        afternoon_activities.extend(activities)
+                        for place in selected_places:
+                            used_place_ids.add(place.id)
+            
+            day_itinerary.afternoon_activities = afternoon_activities
+        else:
+            # Original behavior if no scores are provided
+            remaining_places = [p for p in filtered_places if p.id not in used_place_ids]
+            
+            # Morning activities
+            morning_count = activities_count[TimeSlot.MORNING]
+            morning_places = remaining_places[:morning_count]
+            morning_activities = schedule_activities(
+                current_date, TimeSlot.MORNING, morning_places, morning_count
+            )
+            day_itinerary.morning_activities = morning_activities
+            for place in morning_places:
+                used_place_ids.add(place.id)
+            
+            # Afternoon activities
+            remaining_places = [p for p in filtered_places if p.id not in used_place_ids]
+            afternoon_count = activities_count[TimeSlot.AFTERNOON]
+            afternoon_places = remaining_places[:afternoon_count]
+            afternoon_activities = schedule_activities(
+                current_date, TimeSlot.AFTERNOON, afternoon_places, afternoon_count
+            )
+            day_itinerary.afternoon_activities = afternoon_activities
+            for place in afternoon_places:
+                used_place_ids.add(place.id)
 
         days.append(day_itinerary)
         current_date += timedelta(days=1)
 
-        if place_index >= len(filtered_places):
+        # Break if we've used all places
+        if len(used_place_ids) >= len(filtered_places):
             break
 
     return TripItinerary(
@@ -179,7 +347,7 @@ def format_itinerary_response(itinerary: TripItinerary) -> List[Dict]:
         for activity in day.morning_activities + day.afternoon_activities:
             formatted_places.append(
                 {
-                    "place_id": activity.place.place_id,
+                    "place_id": activity.place.id,
                     "name": activity.place.name,
                     "start_time": activity.start_time.isoformat(),
                     "end_time": activity.end_time.isoformat(),

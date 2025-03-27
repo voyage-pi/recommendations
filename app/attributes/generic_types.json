@@ -8,9 +8,7 @@
     "monument",
     "museum",
     "performing_arts_theater",
-    "sculpture",
-    "landmarks",
-    "tourist_attraction"
+    "sculpture"
   ],
   "outdoor": [
     "amphitheatre",

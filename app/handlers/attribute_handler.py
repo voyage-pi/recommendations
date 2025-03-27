@@ -38,7 +38,7 @@ def questionnaire_to_attributes(answers: List[Answer]) -> Tuple[List[str], List[
 # Then applies the possible conditions
 def answers_attributes(answer: Answer, data) -> Tuple[List[str], List[str], Dict[str, float]]:
     ansType: QuestionType = answer.type
-    ansId: str = str(answer.question_id + 1)
+    ansId: str = str(answer.question_id)
     ansValues = answer.value
     generic_type_scores: Dict[str, float] = {}
     included_types: List[str] = []
@@ -48,7 +48,20 @@ def answers_attributes(answer: Answer, data) -> Tuple[List[str], List[str], Dict
         # For scale questions, use the value directly as the score
         score = float(ansValues)
         generic_type = data[ansId]
-        if generic_type:
+
+        
+        # Handle the case where generic_type is a dictionary (like for question 3)
+        if isinstance(generic_type, dict):
+            # Determine which key to use based on the score
+            # For example, if score >= 3, use "ADVENTUROUS", else use "RELAXING"
+            key = "ADVENTUROUS" if score >= 3 else "RELAXING"
+            if key in generic_type:
+                actual_generic_type = generic_type[key]
+                if actual_generic_type:
+                    generic_type_scores[actual_generic_type] = score
+                    # Get all specific types for this generic type
+                    included_types = [t for t, g in SPECIFIC_TO_GENERIC.items() if g == actual_generic_type]
+        elif generic_type:  # Simple string case
             generic_type_scores[generic_type] = score
             # Get all specific types for this generic type
             included_types = [t for t, g in SPECIFIC_TO_GENERIC.items() if g == generic_type]

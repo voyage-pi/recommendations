@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from typing import List
+import logging
+
+logger = logging.getLogger('uvicorn.error')
+
 
 
 router = APIRouter(
@@ -23,9 +27,13 @@ async def create_trip(trip_data: TripCreate):
     """
 
     # List[str], List[str]
-    included_types, excluded_types = questionnaire_to_attributes(
+    included_types, excluded_types, generic_type_scores = questionnaire_to_attributes(
         trip_data.questionnaire
     )
+
+    logger.info(f"Included types: {included_types}")
+    logger.info(f"Excluded types: {excluded_types}")
+    logger.info(f"Generic type scores: {generic_type_scores}")
 
     included_activity_types: List[ActivityType] = [
         ActivityType(t) for t in included_types
@@ -54,15 +62,17 @@ async def create_trip(trip_data: TripCreate):
         start_date=start_date,
         end_date=end_date,
         template_type=template_type,
+        generic_type_scores=generic_type_scores,
     )
 
     # Format response with places and their start/end times
     formatted_places = format_itinerary_response(itinerary)
 
-    print(formatted_places)
+    print(itinerary)
 
     return TripResponse(
         id=itinerary.id,
         itinerary=itinerary,
         template_type=template_type,
+        generic_type_scores=generic_type_scores,
     )

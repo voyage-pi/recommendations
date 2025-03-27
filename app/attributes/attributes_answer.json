@@ -1,17 +1,17 @@
 {
-  "1": "cultural",
-  "2": "outdoor",
-  "3": {
+  "0": "cultural",
+  "1": "outdoor",
+  "2": {
     "RELAXING": "wellness",
     "ADVENTUROUS": "sports"
   },
-  "4": "food",
-  "5": "entertainment",
-  "6": "shopping",
-  "7": {
-    "1": "cultural",
-    "2": null
+  "3": "food",
+  "4": "entertainment",
+  "5": "shopping",
+  "6": {
+    "0": "cultural",
+    "1": null
   },
-  "10": "nightlife",
-  "11": "transportation"
+  "7": "nightlife",
+  "8": "transportation"
 }
