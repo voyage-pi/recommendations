@@ -33,10 +33,13 @@ class TimeSlot(str, Enum):
     MORNING = "morning"
     AFTERNOON = "afternoon"
 
+class LatLong(BaseModel):
+    latitude:float
+    longitude:float
 class PlaceInfo(BaseModel):
     id: str
     name: str
-    location: Optional[Dict] = None
+    location: LatLong
     types: List[str]
     photos: Optional[List] = None
     accessibility_options: Optional[Dict] = None
