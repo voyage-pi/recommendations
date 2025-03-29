@@ -15,7 +15,6 @@ async def get_places_recommendations(
     Get place recommendations from Google Places API or another service
     This is a placeholder for your actual service wrapper implementation
     """
-    logger.debug("Entered the function")
 
     included_types=place_types[0]
     excluded_types=place_types[1]

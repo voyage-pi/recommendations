@@ -27,13 +27,11 @@ async def create_trip(trip_data: TripCreate):
     """
 
     # List[str], List[str]
+    # TODO: maybe remove excluded types - seems useless
     included_types, excluded_types, generic_type_scores = questionnaire_to_attributes(
         trip_data.questionnaire
     )
 
-    logger.info(f"Included types: {included_types}")
-    logger.info(f"Excluded types: {excluded_types}")
-    logger.info(f"Generic type scores: {generic_type_scores}")
 
     included_activity_types: List[ActivityType] = [
         ActivityType(t) for t in included_types
@@ -46,6 +44,7 @@ async def create_trip(trip_data: TripCreate):
 
     end_date = start_date + timedelta(days=2)
 
+    # TODO: add template selection
     template_type = TemplateType.MODERATE
 
     places: List[PlaceInfo] = await get_places_recommendations(
