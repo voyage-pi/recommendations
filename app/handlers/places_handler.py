@@ -1,13 +1,15 @@
 from typing import List, Tuple
 from app.schemas.Activities import PlaceInfo
 import requests as request
-import logging 
+import logging
 
-logger = logging.getLogger('uvicorn.error')
+logger = logging.getLogger("uvicorn.error")
+
+
 async def get_places_recommendations(
     latitude: float,
     longitude: float,
-    place_types: Tuple[List[str],List[str]],
+    place_types: Tuple[List[str], List[str]],
     radius: int = 5000,  # 5km radius
     max_results: int = 20,
 ) -> List[PlaceInfo]:
@@ -16,25 +18,28 @@ async def get_places_recommendations(
     This is a placeholder for your actual service wrapper implementation
     """
 
-    included_types=place_types[0]
-    excluded_types=place_types[1]
-    url="http://place-wrapper:8080/places"
+    included_types = place_types[0]
+    excluded_types = place_types[1]
+    url = "http://place-wrapper:8080/places/"
 
-    request_body={
-        "location":{
-            "latitude":latitude,
-            "longitude":longitude,
+    request_body = {
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
         },
-        "radius":radius,
-        "includedTypes":included_types,
-        "excludedTypes":excluded_types,
+        "radius": radius,
+        "includedTypes": included_types,
+        "excludedTypes": excluded_types,
     }
-    response= request.post(url,json=request_body)     
+    print(request_body)
+    response = request.post(url, json=request_body)
     status = response.status_code
+    print(status)
     if status == 200:
-        responseBody=response.json().get("response");
-        places_google=responseBody.get("places")
-        places:List[PlaceInfo] =[]
+        responseBody = response.json().get("response")
+        print(responseBody)
+        places_google = responseBody.get("places")
+        places: List[PlaceInfo] = []
         for data in places_google:
             place = PlaceInfo(
                 id=data.get("ID"),
