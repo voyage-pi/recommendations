@@ -56,22 +56,29 @@ class Activity(BaseModel):
     place: PlaceInfo
     start_time: datetime
     end_time: datetime
-    activity_type: ActivityType
+    activity_type:str 
     duration: int  # in minutes
-
+class Route(BaseModel):
+    polylineEncoded:str 
+    duration: int
+    distance :int
 
 class DayItinerary(BaseModel):
     date: datetime
     morning_activities: List[Activity] = []
     afternoon_activities: List[Activity] = []
 
+class DayItineraryRoute(BaseModel):
+    date: datetime
+    morning_activities: List[Activity] = []
+    afternoon_activities: List[Activity] = []
+    routes:List[Route]
 
 class TripItinerary(BaseModel):
     id: int
     start_date: datetime
     end_date: datetime
-    days: List[DayItinerary] = []
-
+    days: List[DayItinerary | DayItineraryRoute] = []
 
 class TemplateType(str, Enum):
     LIGHT = "light"

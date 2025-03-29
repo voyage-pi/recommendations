@@ -1,4 +1,4 @@
-from app.schemas.Activities import DayItinerary, LatLong, TripItinerary,Activity,PlaceInfo
+from app.schemas.Activities import DayItinerary, DayItineraryRoute, LatLong, TripItinerary,Activity,PlaceInfo,Route
 import requests as request
 from typing import List,Tuple
 import math 
@@ -9,7 +9,7 @@ from app.schemas.Questionnaire import Coordinates
 
 def create_route_on_itinerary(itinerary:TripItinerary):
     days:List[DayItinerary]=itinerary.days
-    polylines_per_day=dict()
+    new_days:List[DayItineraryRoute]=[]
     for i,d in enumerate(days):
         morning_places= [ act.place for act in d.morning_activities]
         noon_places= [act.place for act in d.afternoon_activities]
@@ -22,11 +22,24 @@ def create_route_on_itinerary(itinerary:TripItinerary):
         all_paths.extend(shortest_path_moorning)
         all_paths.extend(shortest_path_noon)
         polylines_duration_list=get_polylines_on_places(all_paths) 
-        polylines_per_day[f"day{i}"] = polylines_duration_list
+        acty=change_activities_sorted((d.morning_activities,d.afternoon_activities),(shortest_path_moorning,shortest_path_noon))
+        print(acty)
+        new_day=DayItineraryRoute(routes=polylines_duration_list,morning_activities=acty[0],afternoon_activities=acty[1],date=d.date)
+        new_days.append(new_day)  
+    
+    return  TripItinerary(id=itinerary.id,start_date=itinerary.start_date,end_date=itinerary.end_date,days=new_days)
 
-    return polylines_per_day 
+def change_activities_sorted(previous_activities:Tuple[List[Activity],List[Activity]],shorted_places:Tuple[List[PlaceInfo],List[PlaceInfo]])->Tuple[List[Activity],List[Activity]]:
+    activities=([],[])
+    aux=dict()
+    for i in range(2):
+        for a,c in enumerate(previous_activities[i]) :
+            aux[a] = c.place
+            c.place= shorted_places[i][a]
+            activities[i].append(c)
+    return activities
 
-def get_polylines_on_places(places:List[PlaceInfo]):
+def get_polylines_on_places(places:List[PlaceInfo])->List[Route]:
     polylines=[]
     for i in range(1,len(places)):
         previous=places[i-1]
@@ -38,7 +51,8 @@ def get_polylines_on_places(places:List[PlaceInfo]):
             "travelMode":"WALK"
         }
         response= request.post(url,json=request_body)     
-        polylines.extend(response.json()["routes"])
+        for route in response.json()["routes"]:
+            polylines.append(Route(**route))
     return polylines
 
 def traveling_salesman_problem(matrix:List[List[float]])->List[int]:
