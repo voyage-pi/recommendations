@@ -31,13 +31,10 @@ async def get_places_recommendations(
         "includedTypes": included_types,
         "excludedTypes": excluded_types,
     }
-    print(request_body)
     response = request.post(url, json=request_body)
     status = response.status_code
-    print(status)
     if status == 200:
         responseBody = response.json().get("response")
-        print(responseBody)
         places_google = responseBody.get("places")
         places: List[PlaceInfo] = []
         for data in places_google:

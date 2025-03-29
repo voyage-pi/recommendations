@@ -132,7 +132,6 @@ def schedule_activities(
 
 
 def distribute_activities_by_scores(
-    places: List[PlaceInfo],
     generic_type_scores: Dict[str, float],
     activities_count: Dict[TimeSlot, int],
 ) -> Dict[TimeSlot, Dict[str, int]]:
@@ -155,24 +154,13 @@ def distribute_activities_by_scores(
         category: score / total_score for category, score in generic_type_scores.items()
     }
 
-    # Count available places by generic type
-    places_by_generic_type = {}
-    for place in places:
-        for place_type in place.types:
-            if place_type in SPECIFIC_TO_GENERIC:
-                generic_type = SPECIFIC_TO_GENERIC[place_type]
-                if generic_type not in places_by_generic_type:
-                    places_by_generic_type[generic_type] = 0
-                places_by_generic_type[generic_type] += 1
-
-    # Create initial distribution based on scores
     raw_distribution = {}
     for category, score in normalized_scores.items():
         # Calculate desired count, but don't allocate more than available places
         desired_count = int(round(score * total_activities))
-        if category in places_by_generic_type:
+        if category in generic_type_scores:
             raw_distribution[category] = min(
-                desired_count, places_by_generic_type[category]
+                desired_count, generic_type_scores[category]
             )
         else:
             raw_distribution[category] = 0
@@ -253,6 +241,7 @@ def extract_activity_pairs(
 
 def generate_itinerary(
     places: List[PlaceInfo],
+    places_by_generic_type: Dict[str, List[PlaceInfo]],
     included_types: List[ActivityType],
     excluded_types: List[ActivityType],
     start_date: datetime,
@@ -267,33 +256,25 @@ def generate_itinerary(
     # number of activities for each day
     activities_count = get_activities_count(template_type)
 
-    # Group places by generic type
-    places_by_type = {}
-    for place in places:
-        for place_type in place.types:
-            if place_type in SPECIFIC_TO_GENERIC:
-                generic_type = SPECIFIC_TO_GENERIC[place_type]
-                if generic_type not in places_by_type:
-                    places_by_type[generic_type] = []
-                places_by_type[generic_type].append(place)
-
     days = []
     current_date = start_date
     used_place_ids = set()
 
     # Create a composite ranking function that considers multiple factors
-    ranking_function = compose_rankings([
-        (rank_by_rating, 0.5),      # 50% weight to ratings
-        (rank_by_price, 0.3),       # 30% weight to price
-        (rank_by_accessibility, 0.2) # 20% weight to accessibility
-    ])
+    ranking_function = compose_rankings(
+        [
+            (rank_by_rating, 0.5),  # 50% weight to ratings
+            (rank_by_price, 0.3),  # 30% weight to price
+            (rank_by_accessibility, 0.2),  # 20% weight to accessibility
+        ]
+    )
 
     while current_date <= end_date:
         day_itinerary = DayItinerary(date=current_date)
 
         # {<TimeSlot.MORNING: 'morning'>: {'cultural': 2}
         distribution: Dict[TimeSlot, Dict[str, int]] = distribute_activities_by_scores(
-            places, generic_type_scores, activities_count
+            generic_type_scores, activities_count
         )
 
         morning_activities = []
