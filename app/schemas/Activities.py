@@ -87,7 +87,7 @@ class TripItinerary(BaseModel):
     id: int
     start_date: datetime
     end_date: datetime
-    days: List[DayItinerary] = []
+    days: List[DayItinerary | DayItineraryRoute] = []
 
     def __str__(self):
         activies = ""

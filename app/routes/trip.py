@@ -5,7 +5,9 @@ from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripIt
 from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
+from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import Dict, List
+
 from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 import logging
 
@@ -80,12 +82,13 @@ async def create_trip(trip_data: TripCreate):
         generic_type_scores=generic_type_scores,
     )
 
+    routed_choosen_itinerary=create_route_on_itinerary(itinerary)
+
     # Format response with places and their start/end times
-    formatted_places = format_itinerary_response(itinerary)
 
     return TripResponse(
         id=itinerary.id,
-        itinerary=itinerary,
+        itinerary=routed_choosen_itinerary,
         template_type=template_type,
         generic_type_scores=generic_type_scores,
     )
