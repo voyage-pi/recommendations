@@ -1,13 +1,15 @@
 from typing import List, Tuple
 from app.schemas.Activities import PlaceInfo
 import requests as request
-import logging 
+import logging
 
-logger = logging.getLogger('uvicorn.error')
+logger = logging.getLogger("uvicorn.error")
+
+
 async def get_places_recommendations(
     latitude: float,
     longitude: float,
-    place_types: Tuple[List[str],List[str]],
+    place_types: Tuple[List[str], List[str]],
     radius: int = 5000,  # 5km radius
     max_results: int = 20,
 ) -> List[PlaceInfo]:
@@ -15,30 +17,26 @@ async def get_places_recommendations(
     Get place recommendations from Google Places API or another service
     This is a placeholder for your actual service wrapper implementation
     """
-    logger.debug("Entered the function")
 
-    included_types=place_types[0]
-    excluded_types=place_types[1]
-<<<<<<< Updated upstream
-    url="http://places-wrapper:8080/places"
-=======
-    url="http://place-wrapper:8080/places"
->>>>>>> Stashed changes
-    request_body={
-        "location":{
-            "latitude":latitude,
-            "longitude":longitude,
+    included_types = place_types[0]
+    excluded_types = place_types[1]
+    url = "http://place-wrapper:8080/places/"
+
+    request_body = {
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
         },
-        "radius":radius,
-        "includedTypes":included_types,
-        "excludedTypes":excluded_types,
+        "radius": radius,
+        "includedTypes": included_types,
+        "excludedTypes": excluded_types,
     }
-    response= request.post(url,json=request_body)     
+    response = request.post(url, json=request_body)
     status = response.status_code
     if status == 200:
-        responseBody=response.json().get("response");
-        places_google=responseBody.get("places")
-        places:List[PlaceInfo] =[]
+        responseBody = response.json().get("response")
+        places_google = responseBody.get("places")
+        places: List[PlaceInfo] = []
         for data in places_google:
             place = PlaceInfo(
                 id=data.get("ID"),
