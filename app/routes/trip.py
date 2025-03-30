@@ -5,6 +5,7 @@ from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripIt
 from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
+from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import List
 
 
@@ -13,7 +14,10 @@ router = APIRouter(
     tags=["base"],
     responses={404: {"description": "Not found"}},
 )
-
+@router.post("/route")
+async def testing_endpoint(itinerary:TripItinerary):
+    result=create_route_on_itinerary(itinerary)
+    return {"response":result}
 
 @router.post("/", response_model=TripResponse)
 async def create_trip(trip_data: TripCreate):
