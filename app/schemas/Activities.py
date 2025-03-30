@@ -36,8 +36,9 @@ class TimeSlot(str, Enum):
 class LatLong(BaseModel):
     latitude:float
     longitude:float
+
 class PlaceInfo(BaseModel):
-    id: str
+    id: Optional[str]=None
     name: str
     location: LatLong
     types: List[str]

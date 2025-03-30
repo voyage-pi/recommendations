@@ -17,16 +17,15 @@ def create_route_on_itinerary(itinerary:TripItinerary):
         noon_distance= calculate_distance_matrix(noon_places) 
         shortest_path_moorning=[morning_places[p] for p in traveling_salesman_problem(moorning_distance)]
         shortest_path_noon=[noon_places[p] for p in traveling_salesman_problem(noon_distance)]
-        
+
         all_paths=[]
         all_paths.extend(shortest_path_moorning)
         all_paths.extend(shortest_path_noon)
         polylines_duration_list=get_polylines_on_places(all_paths) 
         acty=change_activities_sorted((d.morning_activities,d.afternoon_activities),(shortest_path_moorning,shortest_path_noon))
-        print(acty)
         new_day=DayItineraryRoute(routes=polylines_duration_list,morning_activities=acty[0],afternoon_activities=acty[1],date=d.date)
         new_days.append(new_day)  
-    
+
     return  TripItinerary(id=itinerary.id,start_date=itinerary.start_date,end_date=itinerary.end_date,days=new_days)
 
 def change_activities_sorted(previous_activities:Tuple[List[Activity],List[Activity]],shorted_places:Tuple[List[PlaceInfo],List[PlaceInfo]])->Tuple[List[Activity],List[Activity]]:
@@ -46,12 +45,13 @@ def get_polylines_on_places(places:List[PlaceInfo])->List[Route]:
         current=places[i]
         url="http://maps-wrapper:8080/maps"
         request_body={
-            "origin":previous.location.dict(),
-            "destination":current.location.dict(),
+            "origin":previous.location.dict() if not previous.id else {"place_id":previous.id},
+            "destination":current.location.dict() if not current.id else {"place_id":current.id} ,
             "travelMode":"WALK"
         }
         response= request.post(url,json=request_body)     
         for route in response.json()["routes"]:
+            print(f"Route {route}")
             polylines.append(Route(**route))
     return polylines
 
@@ -113,7 +113,7 @@ def calculate_distance_matrix(places:List[PlaceInfo]):
             locationC:LatLong=places[c].location
             distance_matrix[r][c]=calculate_distance_lat_long(locationC,locationR)
             distance_matrix[c][r]=distance_matrix[r][c]
-    
+
     return distance_matrix
 
 def calculate_distance_lat_long(location1:LatLong,location2:LatLong)->float:
