@@ -8,8 +8,9 @@ from app.schemas.Questionnaire import Coordinates
 
 
 def create_route_on_itinerary(itineraries :List[TripItinerary])->TripItinerary:
-    choosen_routed_itinerary:TripItinerary=TripItinerary()
+    choosen_routed_itinerary=None
     for iter in itineraries:
+        print(iter)
         days:List[DayItinerary]=iter.days
         new_days:List[DayItineraryRoute]=[]
         for i,d in enumerate(days):

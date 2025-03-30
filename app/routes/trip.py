@@ -20,7 +20,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 @router.post("/route")
-async def testing_endpoint(itinerary:TripItinerary):
+async def testing_endpoint(itinerary:List[TripItinerary]):
     result=create_route_on_itinerary(itinerary)
     return {"response":result}
 
