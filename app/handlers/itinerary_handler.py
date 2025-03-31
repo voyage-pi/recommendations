@@ -242,12 +242,11 @@ def extract_activity_pairs(
 def generate_itinerary(
     places: List[PlaceInfo],
     places_by_generic_type: Dict[str, List[PlaceInfo]],
-    included_types: List[ActivityType],
-    excluded_types: List[ActivityType],
     start_date: datetime,
     end_date: datetime,
     generic_type_scores: Dict[str, float],
     template_type: TemplateType = TemplateType.MODERATE,
+    budget: float = None,
 ) -> TripItinerary:
     """Generate a complete trip itinerary"""
 
@@ -279,10 +278,12 @@ def generate_itinerary(
 
         morning_activities = []
         for category, count in distribution[TimeSlot.MORNING].items():
-            if category in places_by_type and count > 0:
+            if category in places_by_generic_type and count > 0:
                 # Filter out used places and rank the remaining ones
                 available_places = [
-                    p for p in places_by_type[category] if p.id not in used_place_ids
+                    p
+                    for p in places_by_generic_type[category]
+                    if p.id not in used_place_ids
                 ]
                 ranked_places = rank_places(available_places, ranking_function)
                 selected_places = ranked_places[:count]
@@ -303,10 +304,12 @@ def generate_itinerary(
         # Afternoon activities
         afternoon_activities = []
         for category, count in distribution[TimeSlot.AFTERNOON].items():
-            if category in places_by_type and count > 0:
+            if category in places_by_generic_type and count > 0:
                 # Filter out used places and rank the remaining ones
                 available_places = [
-                    p for p in places_by_type[category] if p.id not in used_place_ids
+                    p
+                    for p in places_by_generic_type[category]
+                    if p.id not in used_place_ids
                 ]
                 ranked_places = rank_places(available_places, ranking_function)
                 selected_places = ranked_places[:count]

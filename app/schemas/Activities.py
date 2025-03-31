@@ -41,12 +41,14 @@ class TimeSlot(str, Enum):
     MORNING = "morning"
     AFTERNOON = "afternoon"
 
+
 class LatLong(BaseModel):
-    latitude:float
-    longitude:float
+    latitude: float
+    longitude: float
+
 
 class PlaceInfo(BaseModel):
-    id: Optional[str]=None
+    id: Optional[str] = None
     name: str
     location: LatLong
     types: List[str]
@@ -61,33 +63,33 @@ class PlaceInfo(BaseModel):
     good_for_children: Optional[bool] = None
     good_for_groups: Optional[bool] = None
 
+
 class Activity(BaseModel):
     place: PlaceInfo
     start_time: datetime
     end_time: datetime
-    activity_type:str 
+    activity_type: str
     duration: int  # in minutes
+
+
 class Route(BaseModel):
-    polylineEncoded:str 
+    polylineEncoded: str
     duration: int
-    distance :int
+    distance: int
+
 
 class DayItinerary(BaseModel):
     date: datetime
     morning_activities: List[Activity] = []
     afternoon_activities: List[Activity] = []
+    routes: Optional[List[Route]] = None
 
-class DayItineraryRoute(BaseModel):
-    date: datetime
-    morning_activities: List[Activity] = []
-    afternoon_activities: List[Activity] = []
-    routes:List[Route]
 
 class TripItinerary(BaseModel):
     id: int
     start_date: datetime
     end_date: datetime
-    days: List[DayItinerary | DayItineraryRoute] = []
+    days: List[DayItinerary] = []
 
     def __str__(self):
         activies = ""
@@ -98,6 +100,7 @@ class TripItinerary(BaseModel):
             for activity in day.afternoon_activities:
                 activies += f"  {activity.activity_type}: {activity.place.name} from {activity.start_time} to {activity.end_time}\n"
         return activies
+
 
 class TemplateType(str, Enum):
     LIGHT = "light"

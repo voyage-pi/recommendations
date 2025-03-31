@@ -19,10 +19,13 @@ router = APIRouter(
     tags=["base"],
     responses={404: {"description": "Not found"}},
 )
+
+
 @router.post("/route")
-async def testing_endpoint(itinerary:List[TripItinerary]):
-    result=create_route_on_itinerary(itinerary)
-    return {"response":result}
+async def testing_endpoint(itinerary: List[TripItinerary]):
+    result = create_route_on_itinerary(itinerary)
+    return {"response": result}
+
 
 @router.post("/", response_model=TripResponse)
 async def create_trip(trip_data: TripCreate):
@@ -30,11 +33,6 @@ async def create_trip(trip_data: TripCreate):
     Endpoint for creating a trip
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
-
-    # TODO: replace for parameter
-    start_date = datetime.now() + timedelta(days=1)
-
-    end_date = start_date + timedelta(days=2)
 
     # List[str], List[str]
     # TODO: maybe remove excluded types - seems useless
@@ -70,21 +68,22 @@ async def create_trip(trip_data: TripCreate):
                     places_by_type[generic_type] = []
                 places_by_type[generic_type].append(place)
 
-    # Generate itinerary
     itinerary: TripItinerary = generate_itinerary(
         places=places,
         places_by_generic_type=places_by_type,
-        included_types=included_activity_types,
-        excluded_types=excluded_activity_types,
-        start_date=start_date,
-        end_date=end_date,
+        start_date=trip_data.start_date,
+        end_date=trip_data.end_date,
         template_type=template_type,
         generic_type_scores=generic_type_scores,
+        budget=trip_data.budget,
     )
 
-    routed_choosen_itinerary=create_route_on_itinerary(itinerary)
+    # temporary solution | in the future generate multiple itineraries
+    proposed_itineraries = [itinerary]
 
-    # Format response with places and their start/end times
+    routed_choosen_itinerary: TripItinerary = create_route_on_itinerary(
+        proposed_itineraries
+    )
 
     return TripResponse(
         id=itinerary.id,
