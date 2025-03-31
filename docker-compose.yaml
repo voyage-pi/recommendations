@@ -1,7 +1,7 @@
 services:
   recommendations:
     build: .
-    container_name: ${SERVICE_NAME}
+    container_name: recommendations
     environment:
       - ENV_VAR=example
     volumes:
