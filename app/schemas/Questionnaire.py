@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import BaseModel
 from app.schemas.Activities import TripItinerary, TemplateType
 from app.schemas.GenericTypes import GenericType
+from datetime import datetime
 
 
 class QuestionType(str, Enum):
@@ -24,6 +25,9 @@ class Coordinates(BaseModel):
 class TripCreate(BaseModel):
     coordinates: Coordinates
     questionnaire: List[Answer]
+    start_date: datetime
+    end_date: datetime
+    budget: float
 
 
 class TripResponse(BaseModel):

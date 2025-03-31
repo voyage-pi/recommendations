@@ -5,7 +5,9 @@ from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripIt
 from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
+from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import Dict, List
+
 from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 import logging
 
@@ -19,17 +21,18 @@ router = APIRouter(
 )
 
 
+@router.post("/route")
+async def testing_endpoint(itinerary: List[TripItinerary]):
+    result = create_route_on_itinerary(itinerary)
+    return {"response": result}
+
+
 @router.post("/", response_model=TripResponse)
 async def create_trip(trip_data: TripCreate):
     """
     Endpoint for creating a trip
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
-
-    # TODO: replace for parameter
-    start_date = datetime.now() + timedelta(days=1)
-
-    end_date = start_date + timedelta(days=2)
 
     # List[str], List[str]
     # TODO: maybe remove excluded types - seems useless
@@ -65,24 +68,26 @@ async def create_trip(trip_data: TripCreate):
                     places_by_type[generic_type] = []
                 places_by_type[generic_type].append(place)
 
-    # Generate itinerary
     itinerary: TripItinerary = generate_itinerary(
         places=places,
         places_by_generic_type=places_by_type,
-        included_types=included_activity_types,
-        excluded_types=excluded_activity_types,
-        start_date=start_date,
-        end_date=end_date,
+        start_date=trip_data.start_date,
+        end_date=trip_data.end_date,
         template_type=template_type,
         generic_type_scores=generic_type_scores,
+        budget=trip_data.budget,
     )
 
-    # Format response with places and their start/end times
-    formatted_places = format_itinerary_response(itinerary)
+    # temporary solution | in the future generate multiple itineraries
+    proposed_itineraries = [itinerary]
+
+    routed_choosen_itinerary: TripItinerary = create_route_on_itinerary(
+        proposed_itineraries
+    )
 
     return TripResponse(
         id=itinerary.id,
-        itinerary=itinerary,
+        itinerary=routed_choosen_itinerary,
         template_type=template_type,
         generic_type_scores=generic_type_scores,
     )
