@@ -26,7 +26,6 @@ async def testing_endpoint(itinerary: List[TripItinerary]):
     result = create_route_on_itinerary(itinerary)
     return {"response": result}
 
-
 @router.post("/", response_model=TripResponse)
 async def create_trip(trip_data: TripCreate):
     """

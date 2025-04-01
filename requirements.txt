@@ -3,4 +3,5 @@ uvicorn
 requests
 typer
 python-dotenv
+numpy
 openai
