@@ -4,8 +4,6 @@ services:
     container_name: recommendations
     environment:
       - ENV_VAR=example
-    volumes:
-      - ./app:/app
     depends_on:
       - recommendations_cache
   recommendations_cache:
