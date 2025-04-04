@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from app.schemas.Questionnaire import TripCreate, TripResponse
 from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary
 from datetime import datetime, timedelta
-from app.handlers.places_handler import get_places_recommendations
+from app.handlers.places_handler import get_places_recommendations,filter_included_types_by_score
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import Dict, List
@@ -36,25 +36,20 @@ async def create_trip(trip_data: TripCreate):
 
     # List[str], List[str]
     # TODO: maybe remove excluded types - seems useless
-    included_types, excluded_types, generic_type_scores = questionnaire_to_attributes(
+    _,_, generic_type_scores = questionnaire_to_attributes(
         trip_data.questionnaire
     )
-
-    # get included and excluded activity types
-    included_activity_types: List[ActivityType] = [
-        ActivityType(t) for t in included_types
-    ]
-    excluded_activity_types: List[ActivityType] = [
-        ActivityType(t) for t in excluded_types
-    ]
-
-    # TODO: add template selection
+    
+    
+    
+    
     template_type = TemplateType.MODERATE
+    new_included=filter_included_types_by_score(generic_type_scores)
 
     places: List[PlaceInfo] = await get_places_recommendations(
         latitude=trip_data.coordinates.latitude,
         longitude=trip_data.coordinates.longitude,
-        place_types=(included_types, excluded_types),
+        place_types=(new_included, []),
     )
 
     # group places by generic type

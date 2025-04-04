@@ -1,8 +1,9 @@
 from typing import List, Tuple
 from app.schemas.Activities import PlaceInfo
+from app.schemas.GenericTypes import GENERIC_TYPE_MAPPING
 import requests as request
 import logging
-
+import math
 logger = logging.getLogger("uvicorn.error")
 
 
@@ -34,7 +35,8 @@ async def get_places_recommendations(
     response = request.post(url, json=request_body)
     status = response.status_code
     if status == 200:
-        responseBody = response.json().get("response")
+        responseBody = response.json()
+        print(responseBody)
         places_google = responseBody.get("places")
         places: List[PlaceInfo] = []
         for data in places_google:
@@ -60,3 +62,31 @@ async def get_places_recommendations(
         logging.debug(f"Response status:{status}")
         logging.debug(f"Response:{response}")
         return []
+
+def filter_included_types_by_score(generic_types_score)->List[str]:
+    total_score=sum([v  for k,v in generic_types_score.items()]) 
+    LIMIT_TYPES=50
+    percentage_of_generic_type={k:v/total_score for k,v in generic_types_score.items()}
+    new_included=[]
+    new_excluded=[]
+    for k,v in percentage_of_generic_type.items():
+        n=math.ceil(v*LIMIT_TYPES)
+        types_n=len(GENERIC_TYPE_MAPPING[k])
+        number_of_specific_types= n if n <= types_n  else types_n
+        new_included.extend(GENERIC_TYPE_MAPPING[k][:number_of_specific_types]) 
+    return new_included
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
