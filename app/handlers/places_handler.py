@@ -36,7 +36,6 @@ async def get_places_recommendations(
     status = response.status_code
     if status == 200:
         responseBody = response.json()
-        print(responseBody)
         places_google = responseBody.get("places")
         places: List[PlaceInfo] = []
         for data in places_google:
@@ -75,18 +74,3 @@ def filter_included_types_by_score(generic_types_score)->List[str]:
         number_of_specific_types= n if n <= types_n  else types_n
         new_included.extend(GENERIC_TYPE_MAPPING[k][:number_of_specific_types]) 
     return new_included
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
