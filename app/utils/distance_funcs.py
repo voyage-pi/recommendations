@@ -1,5 +1,6 @@
 import math
-from app.schemas.Activities import LatLong 
+from typing import List
+from app.schemas.Activities import LatLong, PlaceInfo
 R = 6371e3
 
 def calculate_distance_lat_long(location1:LatLong,location2:LatLong)->float:
@@ -27,7 +28,7 @@ def calculate_distance_matrix(places:List[PlaceInfo]):
                 continue
             locationR:LatLong=places[r].location
             locationC:LatLong=places[c].location
-            distance_matrix[r][c]=self.calculate_distance_lat_long(locationC,locationR)
+            distance_matrix[r][c]=calculate_distance_lat_long(locationC,locationR)
             # distance_matrix[c][r]=distance_matrix[r][c]
 
     return distance_matrix
