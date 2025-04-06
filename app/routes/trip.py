@@ -7,9 +7,10 @@ from app.handlers.places_handler import get_places_recommendations,filter_includ
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import Dict, List
-
+from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 import logging
+import os
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -72,12 +73,35 @@ async def create_trip(trip_data: TripCreate):
         budget=trip_data.budget,
     )
 
+    api_key = os.getenv("OPENAI")
+    api = OpenAIAPI(api_key)
+
+    print(f"Generated itinerary: {itinerary}")
+    itinerary = api.generate_itinerary(itinerary)
+
     # temporary solution | in the future generate multiple itineraries
     proposed_itineraries = [itinerary]
+
 
     routed_choosen_itinerary: TripItinerary = create_route_on_itinerary(
         proposed_itineraries
     )
+
+    logger.info("Generated Itinerary Summary:")
+    for day_idx, day in enumerate(itinerary.days):
+        logger.info(f"Day {day_idx + 1} - {day.date.strftime('%Y-%m-%d')}:")
+        
+        # Morning activities
+        if day.morning_activities:
+            logger.info("  Morning Activities:")
+            for act in day.morning_activities:
+                logger.info(f"    - {act.place.name} ({act.activity_type}): {act.start_time.strftime('%H:%M')} - {act.end_time.strftime('%H:%M')}")
+        
+        # Afternoon activities
+        if day.afternoon_activities:
+            logger.info("  Afternoon Activities:")
+            for act in day.afternoon_activities:
+                logger.info(f"    - {act.place.name} ({act.activity_type}): {act.start_time.strftime('%H:%M')} - {act.end_time.strftime('%H:%M')}")
 
     return TripResponse(
         id=itinerary.id,
