@@ -24,16 +24,20 @@ from app.handlers.ranking_handler import (
     rank_by_accessibility,
     compose_rankings,
 )
+import logging
 
+
+
+logger = logging.getLogger("uvicorn.error")
 
 def get_activities_count(template_type: TemplateType) -> Dict[TimeSlot, int]:
     """Determine number of activities based on template type"""
     if template_type == TemplateType.LIGHT:
-        return {TimeSlot.MORNING: 1, TimeSlot.AFTERNOON: 1}
-    elif template_type == TemplateType.MODERATE:
         return {TimeSlot.MORNING: 2, TimeSlot.AFTERNOON: 2}
+    elif template_type == TemplateType.MODERATE:
+        return {TimeSlot.MORNING: 3, TimeSlot.AFTERNOON: 4}
     else:
-        return {TimeSlot.MORNING: 3, TimeSlot.AFTERNOON: 3}
+        return {TimeSlot.MORNING: 4, TimeSlot.AFTERNOON: 5}
 
 
 def filter_places_by_type(
@@ -139,8 +143,16 @@ def distribute_activities_by_scores(
     Distributes activities for each time slot based on category scores.
     Returns a dictionary with time slots as keys and category distributions as values.
     """
+    #Remove transportation from generic type scores
+    generic_type_scores.pop("transportation", None)
+
     # Calculate total number of activities for the day
     total_activities = sum(activities_count.values())
+
+
+    logger.info(f"Total activities to distribute: {total_activities}")
+    logger.info(f"Input generic type scores: {generic_type_scores}")
+    logger.info(f"Activities count per time slot: {activities_count}")
 
     assert total_activities > 0, "At least one activity is required"
     assert generic_type_scores, "Generic type scores are required"
@@ -153,6 +165,7 @@ def distribute_activities_by_scores(
     normalized_scores = {
         category: score / total_score for category, score in generic_type_scores.items()
     }
+    logger.info(f"Normalized scores: {normalized_scores}")
 
     raw_distribution = {}
     for category, score in normalized_scores.items():
@@ -164,6 +177,8 @@ def distribute_activities_by_scores(
             )
         else:
             raw_distribution[category] = 0
+
+    logger.info(f"Initial raw distribution: {raw_distribution}")
 
     # Adjust to match total_activities (might be slightly off due to rounding)
     current_total = sum(raw_distribution.values())
@@ -181,6 +196,7 @@ def distribute_activities_by_scores(
         key=lambda x: normalized_scores.get(x, 0),
         reverse=True,
     )
+    logger.info(f"Categories sorted by score: {sorted_categories}")
 
     morning_allocated = 0
     for category in sorted_categories:
@@ -194,6 +210,8 @@ def distribute_activities_by_scores(
             result[TimeSlot.MORNING][category] = to_allocate
             remaining_distribution[category] -= to_allocate
             morning_allocated += to_allocate
+
+    logger.info(f"Morning allocation: {result[TimeSlot.MORNING]}")
 
     # Then, allocate afternoon activities from what remains
     afternoon_count = activities_count[TimeSlot.AFTERNOON]
@@ -210,6 +228,9 @@ def distribute_activities_by_scores(
             result[TimeSlot.AFTERNOON][category] = to_allocate
             remaining_distribution[category] -= to_allocate
             afternoon_allocated += to_allocate
+
+    logger.info(f"Afternoon allocation: {result[TimeSlot.AFTERNOON]}")
+    logger.info(f"Final distribution result: {result}")
 
     return result
 
