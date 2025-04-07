@@ -16,7 +16,7 @@ def questionnaire_to_attributes(answers: List[Answer]) -> Tuple[List[str], List[
     generic_type_scores: Dict[str, float] = {}
     
     # Categories to ignore scores for
-    ignore_score_categories = [GenericType.FOOD, GenericType.SHOPPING, GenericType.TRANSPORTATION]
+    ignore_score_categories = [GenericType.FOOD, GenericType.SHOPPING, GenericType.TRANSPORTATION, GenericType.ACCOMMODATION, GenericType.NIGHTLIFE]
 
     with open(ATTRIBUTES_PATH) as file:
         data = json.load(file)

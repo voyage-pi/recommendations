@@ -101,16 +101,16 @@ class OpenAIAPI:
                 },
                 reasoning={},
                 tools=[
-                    {
-                        "type": "web_search_preview",
-                        "user_location": {
-                            "city": "Lisbon",
-                            "type": "approximate",
-                            "region": "Lisbon",
-                            "country": "PT"
-                        },
-                        "search_context_size": "low"
-                    }
+                   {
+                       "type": "web_search_preview",
+                       "user_location": {
+                           "city": "Lisbon",
+                           "type": "approximate",
+                           "region": "Lisbon",
+                           "country": "PT"
+                       },
+                       "search_context_size": "low"
+                   }
                 ],
                 tool_choice={
                     "type": "web_search_preview"

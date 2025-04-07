@@ -3,8 +3,8 @@ from fastapi import APIRouter
 from app.schemas.Questionnaire import TripCreate, TripResponse
 from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary
 from datetime import datetime, timedelta
-from app.handlers.places_handler import get_places_recommendations, filter_included_types_by_score, batch_included_types_by_score, get_places_recommendations_batched
-from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
+from app.handlers.places_handler import get_places_recommendations, batch_included_types_by_score, get_places_recommendations_batched
+from app.handlers.itinerary_handler import generate_itinerary
 from app.handlers.route_creation_handler import create_route_on_itinerary
 from typing import Dict, List
 from app.utils.openai_integration import OpenAIAPI
@@ -46,7 +46,7 @@ async def create_trip(trip_data: TripCreate):
     place_types_batches = batch_included_types_by_score(generic_type_scores)
     
     # Exclude all shopping place types
-    excluded_types = GENERIC_TYPE_MAPPING["shopping"] + GENERIC_TYPE_MAPPING["accommodation"]
+    excluded_types = GENERIC_TYPE_MAPPING["shopping"] + GENERIC_TYPE_MAPPING["accommodation"] + GENERIC_TYPE_MAPPING["nightlife"]
     
     # Get places using the batched approach
     places: List[PlaceInfo] = await get_places_recommendations_batched(
@@ -56,7 +56,9 @@ async def create_trip(trip_data: TripCreate):
         excluded_types=excluded_types,
     )
 
-    logger.info(f"Places: {[place.name for place in places]}")
+    logger.info("Found Places:")
+    for place in places:
+        logger.info(f"  - {place.name}: {place.types}")
 
     # group places by generic type
     # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}
@@ -72,11 +74,6 @@ async def create_trip(trip_data: TripCreate):
                     places_by_type[generic_type].append(place)
                     added_to_types.add(generic_type)
 
-    logger.info("Places by Type Summary:")
-    for generic_type, type_places in places_by_type.items():
-        logger.info(f"{generic_type}:")
-        for place in type_places:
-            logger.info(f"  - {place.name}")
 
     itinerary: TripItinerary = generate_itinerary(
         places=places,
@@ -101,21 +98,6 @@ async def create_trip(trip_data: TripCreate):
         proposed_itineraries
     )
 
-    logger.info("Generated Itinerary Summary:")
-    for day_idx, day in enumerate(itinerary.days):
-        logger.info(f"Day {day_idx + 1} - {day.date.strftime('%Y-%m-%d')}:")
-        
-        # Morning activities
-        if day.morning_activities:
-            logger.info("  Morning Activities:")
-            for act in day.morning_activities:
-                logger.info(f"    - {act.place.name} ({act.activity_type}): {act.start_time.strftime('%H:%M')} - {act.end_time.strftime('%H:%M')}")
-        
-        # Afternoon activities
-        if day.afternoon_activities:
-            logger.info("  Afternoon Activities:")
-            for act in day.afternoon_activities:
-                logger.info(f"    - {act.place.name} ({act.activity_type}): {act.start_time.strftime('%H:%M')} - {act.end_time.strftime('%H:%M')}")
 
     return TripResponse(
         id=itinerary.id,

@@ -51,6 +51,7 @@ async def get_places_recommendations(
                 opening_hours=data.get("OpeningHours", {}),
                 price_range=data.get("priceRange"),
                 rating=data.get("rating"),
+                user_ratings_total=data.get("userRatingCount"),
                 international_phone_number=data.get("internationalPhoneNumber"),
                 national_phone_number=data.get("nationalPhoneNumber"),
                 allows_dogs=data.get("allowsDogs"),
@@ -62,8 +63,7 @@ async def get_places_recommendations(
     else:
         logging.debug(f"Response status: {status}")
         response_text = response.text
-        logging.error(f"Error response from place-wrapper: {response_text}")
-        return []
+        raise Exception(f"Error response from place-wrapper: {response_text}")
 
 async def get_places_recommendations_batched(
     latitude: float,
@@ -90,6 +90,9 @@ async def get_places_recommendations_batched(
     """
     all_places: List[PlaceInfo] = []
     seen_place_ids = set()
+
+    logger.info(f"Included types: {place_types_batches}")
+    logger.info(f"Excluded types: {excluded_types}")
     
     logger.info(f"Making requests for {len(place_types_batches)} batches of place types")
     
@@ -115,20 +118,6 @@ async def get_places_recommendations_batched(
     logger.info(f"Total unique places found across all batches: {len(all_places)}")
     return all_places
 
-def filter_included_types_by_score(generic_types_score)->List[str]:
-    logger.info(f"Generic types score: {generic_types_score}")
-
-    total_score=sum([v  for k,v in generic_types_score.items()]) 
-    LIMIT_TYPES=50
-    percentage_of_generic_type={k:v/total_score for k,v in generic_types_score.items()}
-    new_included=[]
-    new_excluded=[]
-    for k,v in percentage_of_generic_type.items():
-        n=math.ceil(v*LIMIT_TYPES)
-        types_n=len(GENERIC_TYPE_MAPPING[k])
-        number_of_specific_types= n if n <= types_n  else types_n
-        new_included.extend(GENERIC_TYPE_MAPPING[k][:number_of_specific_types]) 
-    return new_included
 
 def batch_included_types_by_score(generic_types_score) -> List[List[str]]:
     """
