@@ -14,6 +14,7 @@ class GenericType(str, Enum):
     WELLNESS = "wellness"
     SPORTS = "sports"
     NIGHTLIFE = "nightlife"
+    LANDMARKS = "landmarks"
 
 # Load generic type mappings from JSON
 BASE_DIR = Path(__file__).resolve().parent.parent

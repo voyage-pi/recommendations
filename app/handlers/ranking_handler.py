@@ -1,4 +1,4 @@
-from typing import List, Dict, Callable, Tuple
+from typing import List, Dict, Callable, Tuple, Set
 from app.schemas.Activities import PlaceInfo
 
 def rank_by_rating(places: List[PlaceInfo]) -> List[PlaceInfo]:
@@ -43,6 +43,78 @@ def rank_by_accessibility(places: List[PlaceInfo]) -> List[PlaceInfo]:
         return options_count / max_options
     
     return sorted(places, key=get_accessibility_score, reverse=True)
+
+def rank_by_prominence(places: List[PlaceInfo]) -> List[PlaceInfo]:
+    """
+    Ranks places by their prominence/importance using user_ratings_total 
+    as a proxy for popularity
+    """
+    # Some places might not have user_ratings_total, default to 0
+    return sorted(
+        places, 
+        key=lambda x: getattr(x, 'user_ratings_total', 0) or 0, 
+        reverse=True
+    )
+
+def rank_by_landmark_status(places: List[PlaceInfo]) -> List[PlaceInfo]:
+    """
+    Ranks places by whether they are major landmarks based on place types
+    """
+    landmark_types = {
+        "tourist_attraction",
+        "point_of_interest",
+        "establishment",
+        "landmark",
+        "natural_feature",
+        "museum",
+        "historic",
+        "monument",
+        "church",
+        "place_of_worship",
+        "park"
+    }
+    
+    def get_landmark_score(place: PlaceInfo) -> float:
+        if not place.types:
+            return 0.0
+            
+        # Count how many landmark type categories this place matches
+        matching_types = set(place.types) & landmark_types
+        return len(matching_types) / len(landmark_types)
+    
+    return sorted(places, key=get_landmark_score, reverse=True)
+
+def get_ranking_weights(generic_type: str) -> List[Tuple[Callable, float]]:
+    """
+    Returns different ranking weights based on place category
+    """
+    if generic_type in ["cultural", "landmarks"]:
+        return [
+            (rank_by_landmark_status, 0.4),
+            (rank_by_prominence, 0.3),
+            (rank_by_rating, 0.2),
+            (rank_by_accessibility, 0.1)
+        ]
+    elif generic_type in ["outdoor", "nature"]:
+        return [
+            (rank_by_rating, 0.4),
+            (rank_by_accessibility, 0.3),
+            (rank_by_prominence, 0.2),
+            (rank_by_landmark_status, 0.1)
+        ]
+    elif generic_type in ["food", "restaurant"]:
+        return [
+            (rank_by_rating, 0.5),
+            (rank_by_price, 0.3),
+            (rank_by_prominence, 0.2)
+        ]
+    # Default weights for other categories
+    return [
+        (rank_by_rating, 0.3),
+        (rank_by_prominence, 0.3),
+        (rank_by_landmark_status, 0.2),
+        (rank_by_price, 0.2)
+    ]
 
 def compose_rankings(
     rankings: List[Tuple[Callable[[List[PlaceInfo]], List[PlaceInfo]], float]]

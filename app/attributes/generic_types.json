@@ -170,5 +170,24 @@
     "yoga_studio"
   ],
   "sports": ["cycling_park", "dog_park", "off_roading_area", "skateboard_park"],
-  "nightlife": ["night_club", "bar", "pub"]
+  "nightlife": ["night_club", "bar", "pub"],
+  "landmarks": [
+    "tourist_attraction",
+    "point_of_interest",
+    "landmark",
+    "natural_feature",
+    "cathedral",
+    "church",
+    "place_of_worship",
+    "temple",
+    "mosque",
+    "synagogue",
+    "historic",
+    "castle",
+    "palace",
+    "monument",
+    "statue",
+    "memorial",
+    "government_building"
+  ]
 }

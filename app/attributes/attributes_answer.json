@@ -3,12 +3,12 @@
   "1": "outdoor",
   "2": "outdoor",
   "3": "food",
-  "4": "entertainment",
+  "4": "nightlife",
   "5": "shopping",
-  "6": "entertainment",
-  "7": "nightlife",
+  "6": "cultural",
+  "7": "outdoor",
   "8": "transportation",
-  "9": "entertainment",
-  "10": "entertainment",
-  "11": "entertainment"
+  "9": "nightlife",
+  "10": "transportation",
+  "11": "transportation"
 }

@@ -57,6 +57,7 @@ class PlaceInfo(BaseModel):
     opening_hours: Optional[Dict] = None
     price_range: Optional[str] = None
     rating: Optional[float] = None
+    user_ratings_total: Optional[int] = None
     international_phone_number: Optional[str] = None
     national_phone_number: Optional[str] = None
     allows_dogs: Optional[bool] = None
