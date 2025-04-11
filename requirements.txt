@@ -5,3 +5,4 @@ typer
 python-dotenv
 numpy
 openai
+redis

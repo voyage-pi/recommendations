@@ -11,6 +11,7 @@ from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC, GENERIC_TYPE_MAPPING
 import logging
 import os
+from app.utils.redis_utils import redis_cache
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -51,7 +52,14 @@ async def create_trip(trip_data: TripCreate):
     # Get the radius based on the place name
     api_key = os.getenv("OPENAI")
     api = OpenAIAPI(api_key)
-    radius = api.generate_radius(trip_data.place_name)
+    
+    def get_radius():
+        return api.generate_radius(trip_data.place_name)
+    
+    radius = redis_cache.get_or_set(
+        f"radius:{trip_data.place_name}",
+        get_radius
+    )
 
     logger.info(f"Radius: {radius}")
     
