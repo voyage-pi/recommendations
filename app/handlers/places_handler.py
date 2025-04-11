@@ -11,7 +11,7 @@ async def get_places_recommendations(
     latitude: float,
     longitude: float,
     place_types: Tuple[List[str], List[str]],
-    radius: int = 8000,  # 5km radius
+    radius: int = 10000, 
     max_results: int = 20,
 ) -> List[PlaceInfo]:
     """
@@ -132,6 +132,8 @@ def batch_included_types_by_score(generic_types_score) -> List[List[str]]:
         List of batches, where each batch is a list of specific place types
     """
     logger.info(f"Generic types score: {generic_types_score}")
+    # Remove landmarks from generic types score as it's only used for scoring
+    generic_types_score = {k: v for k, v in generic_types_score.items() if k != "landmarks"}
     
     # Sort generic types by score in descending order
     sorted_types = sorted(generic_types_score.items(), key=lambda x: x[1], reverse=True)

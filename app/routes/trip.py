@@ -48,17 +48,22 @@ async def create_trip(trip_data: TripCreate):
     # Exclude all shopping place types
     excluded_types = GENERIC_TYPE_MAPPING["shopping"] + GENERIC_TYPE_MAPPING["accommodation"] + GENERIC_TYPE_MAPPING["nightlife"]
     
+    # Get the radius based on the place name
+    api_key = os.getenv("OPENAI")
+    api = OpenAIAPI(api_key)
+    radius = api.generate_radius(trip_data.place_name)
+
+    logger.info(f"Radius: {radius}")
+    
     # Get places using the batched approach
     places: List[PlaceInfo] = await get_places_recommendations_batched(
         latitude=trip_data.coordinates.latitude,
         longitude=trip_data.coordinates.longitude,
         place_types_batches=place_types_batches,
         excluded_types=excluded_types,
+        radius=radius
     )
 
-    logger.info("Found Places:")
-    for place in places:
-        logger.info(f"  - {place.name}: {place.types}")
 
     # group places by generic type
     # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}
@@ -75,6 +80,9 @@ async def create_trip(trip_data: TripCreate):
                     added_to_types.add(generic_type)
 
 
+
+
+
     itinerary: TripItinerary = generate_itinerary(
         places=places,
         places_by_generic_type=places_by_type,
@@ -85,10 +93,8 @@ async def create_trip(trip_data: TripCreate):
         budget=trip_data.budget,
     )
 
-    api_key = os.getenv("OPENAI")
-    api = OpenAIAPI(api_key)
 
-    #itinerary = api.generate_itinerary(itinerary)
+    itinerary = api.generate_itinerary(itinerary)
 
     # temporary solution | in the future generate multiple itineraries
     proposed_itineraries = [itinerary]

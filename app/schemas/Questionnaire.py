@@ -24,6 +24,7 @@ class Coordinates(BaseModel):
 
 class TripCreate(BaseModel):
     coordinates: Coordinates
+    place_name: str
     questionnaire: List[Answer]
     start_date: datetime
     end_date: datetime
