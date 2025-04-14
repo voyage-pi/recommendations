@@ -1,6 +1,6 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
 from fastapi import APIRouter
-from app.schemas.Questionnaire import TripCreate, TripResponse
+from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
 from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary
 from datetime import datetime, timedelta
 from app.handlers.places_handler import get_places_recommendations, batch_included_types_by_score, get_places_recommendations_batched
@@ -34,72 +34,85 @@ async def create_trip(trip_data: TripCreate):
     Receives a TripCreate object and returns a TripResponse object with a complete trip
     """
 
-    # List[str], List[str]
-    # TODO: maybe remove excluded types - seems useless
-    _,_, generic_type_scores = questionnaire_to_attributes(
-        trip_data.questionnaire
-    )
-    
-    template_type = TemplateType.MODERATE
+    trip_type= trip_data.tripType
+    data = trip_data.data
+    if TripType(trip_type)==TripType.PLACE or TripType(trip_type)==TripType.ZONE:
+        # List[str], List[str]
+        # TODO: maybe remove excluded types - seems useless
+        _,_, generic_type_scores = questionnaire_to_attributes(
+            trip_data.questionnaire
+        )
+        
+        template_type = TemplateType.MODERATE
 
-    # Get batches of place types, with higher-scoring types in smaller batches
-    place_types_batches = batch_included_types_by_score(generic_type_scores)
-    
-    # Exclude all shopping place types
-    excluded_types = GENERIC_TYPE_MAPPING["shopping"] + GENERIC_TYPE_MAPPING["accommodation"] + GENERIC_TYPE_MAPPING["nightlife"]
-    
-    # Get places using the batched approach
-    places: List[PlaceInfo] = await get_places_recommendations_batched(
-        latitude=trip_data.coordinates.latitude,
-        longitude=trip_data.coordinates.longitude,
-        place_types_batches=place_types_batches,
-        excluded_types=excluded_types,
-    )
+        # Get batches of place types, with higher-scoring types in smaller batches
+        place_types_batches = batch_included_types_by_score(generic_type_scores)
+        
+        # Exclude all shopping place types
+        excluded_types = GENERIC_TYPE_MAPPING["shopping"] + GENERIC_TYPE_MAPPING["accommodation"] + GENERIC_TYPE_MAPPING["nightlife"]
+        
 
-    logger.info("Found Places:")
-    for place in places:
-        logger.info(f"  - {place.name}: {place.types}")
+        if TripType(trip_type)==TripType.ZONE:
+            places: List[PlaceInfo] = await get_places_recommendations_batched(
+                latitude=data.center.latitude,
+                longitude=data.center.longitude,
+                place_types_batches=place_types_batches,
+                excluded_types=excluded_types,
+                radius=data.radius
+            )
+        else:
+            places: List[PlaceInfo] = await get_places_recommendations_batched(
+                latitude=data.coordinates.latitude,
+                longitude=data.coordinates.longitude,
+                place_types_batches=place_types_batches,
+                excluded_types=excluded_types,
+            )
+        
 
-    # group places by generic type
-    # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}
-    places_by_type: Dict[str, List[PlaceInfo]] = {}
-    for place in places:
-        added_to_types = set()
-        for place_type in place.types:
-            if place_type in SPECIFIC_TO_GENERIC:
-                generic_type = SPECIFIC_TO_GENERIC[place_type]
-                if generic_type not in added_to_types:
-                    if generic_type not in places_by_type:
-                        places_by_type[generic_type] = []
-                    places_by_type[generic_type].append(place)
-                    added_to_types.add(generic_type)
+        logger.info("Found Places:")
+        for place in places:
+            logger.info(f"  - {place.name}: {place.types}")
+
+        # group places by generic type
+        # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}
+        places_by_type: Dict[str, List[PlaceInfo]] = {}
+        for place in places:
+            added_to_types = set()
+            for place_type in place.types:
+                if place_type in SPECIFIC_TO_GENERIC:
+                    generic_type = SPECIFIC_TO_GENERIC[place_type]
+                    if generic_type not in added_to_types:
+                        if generic_type not in places_by_type:
+                            places_by_type[generic_type] = []
+                        places_by_type[generic_type].append(place)
+                        added_to_types.add(generic_type)
 
 
-    itinerary: TripItinerary = generate_itinerary(
-        places=places,
-        places_by_generic_type=places_by_type,
-        start_date=trip_data.start_date,
-        end_date=trip_data.end_date,
-        template_type=template_type,
-        generic_type_scores=generic_type_scores,
-        budget=trip_data.budget,
-    )
+        itinerary: TripItinerary = generate_itinerary(
+            places=places,
+            places_by_generic_type=places_by_type,
+            start_date=trip_data.start_date,
+            end_date=trip_data.end_date,
+            template_type=template_type,
+            generic_type_scores=generic_type_scores,
+            budget=trip_data.budget,
+        )
 
-    api_key = os.getenv("OPENAI")
-    api = OpenAIAPI(api_key)
+    #    api_key = os.getenv("OPENAI")
+    #    api = OpenAIAPI(api_key)
 
-    #itinerary = api.generate_itinerary(itinerary)
+        #itinerary = api.generate_itinerary(itinerary)
 
     # temporary solution | in the future generate multiple itineraries
-    proposed_itineraries = [itinerary]
+        proposed_itineraries = [itinerary]
 
 
-    routed_choosen_itinerary: TripItinerary = create_route_on_itinerary(
+        routed_choosen_itinerary: TripItinerary = create_route_on_itinerary(
         proposed_itineraries
-    )
+        )
 
 
-    return TripResponse(
+        return TripResponse(
         id=itinerary.id,
         itinerary=routed_choosen_itinerary,
         template_type=template_type,
