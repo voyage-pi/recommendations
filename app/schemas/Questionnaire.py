@@ -36,6 +36,7 @@ class Road(BaseModel):
 
 class Place(BaseModel):
     coordinates:LatLong
+    place_name:str
 
 class Zone(BaseModel):
     center:LatLong

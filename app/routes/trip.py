@@ -68,18 +68,18 @@ async def create_trip(trip_data: TripCreate):
         api = OpenAIAPI(api_key)
 
         def get_radius():
-            return api.generate_radius(trip_data.place_name) * 1000
+            return api.generate_radius(data.place_name) * 1000
 
         
         # api if trip type is place otherwise the data.radius passed  
-        radius = redis_cache.get_or_set(f"radius:{trip_data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
+        radius = redis_cache.get_or_set(f"radius:{data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
 
         logger.info(f"Radius: {radius}")
 
-        # Get places using the batched approach
+        # changing the object attributtes path based on the trip type
         places: List[PlaceInfo] = await get_places_recommendations_batched(
-            latitude=trip_data.coordinates.latitude,
-            longitude=trip_data.coordinates.longitude,
+            latitude=data.coordinates.latitude if TripType(trip_type) ==TripType.PLACE else data.center.latitude,
+            longitude=data.coordinates.longitude if TripType(trip_type) ==TripType.PLACE else data.center.latitude,
             place_types_batches=place_types_batches,
             excluded_types=excluded_types,
             radius=radius,
