@@ -98,12 +98,6 @@ def distribute_activities_for_day(
     generic_type_scores: Dict[str, float],
     total_activities: int,
 ) -> Dict[str, int]:
-    """
-    Distributes activities for the entire day based on category scores.
-    Returns a dictionary with category types as keys and activity counts as values.
-    Ensures that important landmarks are included in the distribution.
-    """
-    # Remove transportation from generic type scores
     generic_type_scores = generic_type_scores.copy()
     generic_type_scores.pop("transportation", None)
     generic_type_scores.pop("accommodation", None)
@@ -117,48 +111,49 @@ def distribute_activities_for_day(
     assert total_activities > 0, "At least one activity is required"
     assert generic_type_scores, "Generic type scores are required"
 
-    # Reserve slots for must-visit landmarks
-    landmark_types = ["landmarks", "cultural", "historic"]
+
+    # Calculate landmark-related scores for distribution
+    landmark_types = ["cultural", "historic"]
     has_landmarks = any(t in generic_type_scores for t in landmark_types)
     
     landmark_quota = 0
     if has_landmarks:
-        # Reserve at least 25% of activities for landmarks (minimum 1)
-        landmark_quota = max(1, int(total_activities * 0.25))
-        logger.info(f"Reserved {landmark_quota} slots for landmark activities")
+        landmark_score = sum(generic_type_scores.get(t, 0) for t in landmark_types)
+        total_score = sum(generic_type_scores.values())
+        
+        if total_score > 0:
+            landmark_ratio = landmark_score / total_score
+            base_quota = max(1, int(total_activities * 0.3))
+            score_adjusted_quota = int(total_activities * landmark_ratio)
+            landmark_quota = min(base_quota, score_adjusted_quota)
+            
+            logger.info(f"Landmark ratio: {landmark_ratio}, Base quota: {base_quota}, Score adjusted: {score_adjusted_quota}")
+            logger.info(f"Reserved {landmark_quota} slots for landmark activities")
     
-    # Calculate remaining activities to distribute
     remaining_activities = total_activities - landmark_quota
     
-    # Create a copy of scores for distribution calculation
     distribution_scores = generic_type_scores.copy()
     
-    # Remove landmark types from distribution calculation
     landmark_scores = {}
     for ltype in landmark_types:
         if ltype in distribution_scores:
             landmark_scores[ltype] = distribution_scores.pop(ltype)
     
-    # Normalize remaining scores for non-landmark types
     total_score = sum(distribution_scores.values())
     if total_score == 0:
-        total_score = 1  # Avoid division by zero
+        total_score = 1
 
     normalized_scores = {
         category: score / total_score for category, score in distribution_scores.items()
     }
     logger.info(f"Normalized scores: {normalized_scores}")
 
-    # Calculate initial distribution for non-landmark categories
     distribution = {}
     for category, score in normalized_scores.items():
-        # Calculate desired count, but don't allocate more than available places
         desired_count = int(round(score * remaining_activities))
         distribution[category] = min(desired_count, generic_type_scores[category])
 
-    # Distribute landmark quota among landmark categories
     if landmark_scores:
-        # Normalize landmark scores
         total_landmark_score = sum(landmark_scores.values())
         if total_landmark_score > 0:
             for ltype, score in landmark_scores.items():
@@ -167,12 +162,9 @@ def distribute_activities_for_day(
     
     logger.info(f"Initial distribution: {distribution}")
 
-    # Adjust to match total_activities (might be slightly off due to rounding)
     current_total = sum(distribution.values())
     
-    # If we need to add more activities
     if current_total < total_activities:
-        # Prioritize landmark categories first
         categories = sorted(
             distribution.keys(),
             key=lambda x: (x in landmark_types, normalized_scores.get(x, 0)),
@@ -185,9 +177,7 @@ def distribute_activities_for_day(
             distribution[category] += 1
             current_total += 1
     
-    # If we need to remove activities
     elif current_total > total_activities:
-        # Avoid removing from landmark categories if possible
         categories = sorted(
             distribution.keys(),
             key=lambda x: (x not in landmark_types, normalized_scores.get(x, 0)),
@@ -281,9 +271,9 @@ def select_places_for_category(
     ranking_function = compose_rankings(ranking_weights)
     
     # Rank places using the category-specific weights
+
     ranked_places = rank_places(available_places, ranking_function)
 
-    logger.info(f"Ranked places: {[(place.name, place.types) for place in ranked_places]}")
     
     # Ensure variety in selection by avoiding too many places of the same specific type
     selected_places = []

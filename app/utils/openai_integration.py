@@ -100,28 +100,13 @@ class OpenAIAPI:
                     }
                 },
                 reasoning={},
-                tools=[
-                   {
-                       "type": "web_search_preview",
-                       "user_location": {
-                           "city": "Lisbon",
-                           "type": "approximate",
-                           "region": "Lisbon",
-                           "country": "PT"
-                       },
-                       "search_context_size": "low"
-                   }
-                ],
-                tool_choice={
-                    "type": "web_search_preview"
-                },
+
                 temperature=1,
                 max_output_tokens=2048,
                 top_p=1,
                 store=True
             )
 
-            print(f"Response: {response}")
             
             # Parse the response and update the activity times in the itinerary
             try:
@@ -201,3 +186,48 @@ class OpenAIAPI:
                 print(f"Error processing day {day.date}: {str(e)}")
         
         return itinerary
+
+
+    def generate_radius(self, place_name: str) -> int:
+        response = openai.responses.create(
+        model="gpt-4o-mini-2024-07-18",
+        input=[
+            {
+            "role": "system",
+            "content": [
+                {
+                "type": "input_text",
+                "text": "Determine an appropriate search radius (in km) for a city to find places to visit, using the city's size as a factor and referencing the example that Lisbon's radius is 12km.\n\nEnsure that the radius provided is suitable for each city's relative size.\n\n# Steps\n\n1. Identify the size of the city in question.\n2. Compare the city's size to the reference example (Lisbon's radius of 12 km).\n3. Adjust the radius proportionally based on the size comparison:\n   - For smaller cities than Lisbon, reduce the radius.\n   - For larger cities, increase the radius.\n4. Conclude with the calculated radius for the city.\n\n# Output Format\n\nProvide the calculated radius as a numeric value followed by \" km.\"\n\n# Examples\n\n- Input: \"City size: Small, Reference: Lisbon (12 km)\"\n  - Reasoning: Lisbon is a medium-sized city, thus its radius is 12 km. For a smaller city, a smaller radius is adequate.\n  - Output: \"8 km\" (Actual radius will vary; adjust based on specific comparisons.)\n\n- Input: \"City size: Larger than Lisbon, Reference: Lisbon (12 km)\"\n  - Reasoning: The city is larger than Lisbon, suggesting the need for a bigger search radius.\n  - Output: \"18 km\"\n"
+                }
+            ]
+            }
+        ],
+        text={
+            "format": {
+            "type": "json_schema",
+            "name": "radius_response",
+            "schema": {
+                "type": "object",
+                "required": [
+                "radius"
+                ],
+                "properties": {
+                "radius": {
+                    "type": "number",
+                    "description": "The adequateradius in kilometers."
+                }
+                },
+                "additionalProperties": False
+            },
+            "strict": True
+            }
+        },
+        reasoning={},
+        tools=[],
+        temperature=1,
+        max_output_tokens=2048,
+        top_p=1,
+        store=True
+        ) 
+        response_json = json.loads(response.output[0].content[0].text)
+        return response_json["radius"]
