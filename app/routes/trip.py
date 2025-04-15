@@ -79,7 +79,7 @@ async def create_trip(trip_data: TripCreate):
         # changing the object attributtes path based on the trip type
         places: List[PlaceInfo] = await get_places_recommendations_batched(
             latitude=data.coordinates.latitude if TripType(trip_type) ==TripType.PLACE else data.center.latitude,
-            longitude=data.coordinates.longitude if TripType(trip_type) ==TripType.PLACE else data.center.latitude,
+            longitude=data.coordinates.longitude if TripType(trip_type) ==TripType.PLACE else data.center.longitude,
             place_types_batches=place_types_batches,
             excluded_types=excluded_types,
             radius=radius,
