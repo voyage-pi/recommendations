@@ -20,6 +20,7 @@ from app.schemas.GenericTypes import (
 import logging
 import os
 from app.utils.redis_utils import redis_cache
+from app.handlers.ranking_handler import pre_rank_places_by_category
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -94,9 +95,12 @@ async def create_trip(trip_data: TripCreate):
                     places_by_type[generic_type].append(place)
                     added_to_types.add(generic_type)
 
+    # Pre-rank all places by category
+    pre_ranked_places = pre_rank_places_by_category(places_by_type)
+
     itinerary: TripItinerary = generate_itinerary(
         places=places,
-        places_by_generic_type=places_by_type,
+        places_by_generic_type=pre_ranked_places,
         start_date=trip_data.start_date,
         end_date=trip_data.end_date,
         template_type=template_type,
@@ -119,3 +123,9 @@ async def create_trip(trip_data: TripCreate):
         template_type=template_type,
         generic_type_scores=generic_type_scores,
     )
+
+
+@router.post("/trip/{trip_id}/regenerate-activity")
+async def regenerate_activity(trip_id: str, activity_id: int):
+
+    

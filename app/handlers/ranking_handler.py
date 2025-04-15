@@ -167,3 +167,19 @@ def rank_places(
     Rank a list of places using the specified ranking function
     """
     return ranking_fn(places) 
+
+def pre_rank_places_by_category(
+    places_by_generic_type: Dict[str, List[PlaceInfo]]
+) -> Dict[str, List[PlaceInfo]]:
+    """
+    Pre-ranks all places by their generic type categories.
+    Returns a dictionary mapping each category to its pre-ranked list of places.
+    """
+    pre_ranked_places = {}
+    
+    for category, places in places_by_generic_type.items():
+        ranking_weights = get_ranking_weights(category)
+        ranking_function = compose_rankings(ranking_weights)
+        pre_ranked_places[category] = rank_places(places, ranking_function)
+    
+    return pre_ranked_places 
