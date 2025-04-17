@@ -51,7 +51,6 @@ class TripCreate(BaseModel):
     budget: float
 
 class TripResponse(BaseModel):
-    id: int
     itinerary: TripItinerary
     template_type: TemplateType
     generic_type_scores: Dict[str, float]
