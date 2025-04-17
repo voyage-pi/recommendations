@@ -120,7 +120,6 @@ async def create_trip(trip_data: TripCreate):
             )
 
         return TripResponse(
-            id=itinerary.id,
             itinerary=routed_choosen_itinerary,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
