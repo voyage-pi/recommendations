@@ -66,6 +66,7 @@ class PlaceInfo(BaseModel):
 
 
 class Activity(BaseModel):
+    id: int
     place: PlaceInfo
     start_time: datetime
     end_time: datetime

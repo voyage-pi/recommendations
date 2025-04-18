@@ -310,6 +310,7 @@ def generate_itinerary(
     days = []
     current_date = start_date
     used_place_ids = set()
+    activity_id = 0
 
     while current_date <= end_date:
         day_itinerary = DayItinerary(date=current_date)
@@ -338,6 +339,7 @@ def generate_itinerary(
                         activity_type = get_activity_type(place)
                         
                         activity = Activity(
+                            id=activity_id,
                             place=place,
                             start_time=placeholder_time,
                             end_time=placeholder_time + timedelta(minutes=duration),
@@ -347,6 +349,7 @@ def generate_itinerary(
                         
                         day_activities.append(activity)
                         used_place_ids.add(place.id)
+                        activity_id += 1
 
         # Now assign these activities to time slots and reschedule them
         if day_activities:
@@ -383,6 +386,7 @@ def format_itinerary_response(itinerary: TripItinerary) -> List[Dict]:
         for activity in day.morning_activities + day.afternoon_activities:
             formatted_places.append(
                 {
+                    "activity_id": activity.id,
                     "place_id": activity.place.id,
                     "name": activity.place.name,
                     "start_time": activity.start_time.isoformat(),
