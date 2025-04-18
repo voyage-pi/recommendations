@@ -87,7 +87,6 @@ class DayItinerary(BaseModel):
 
 
 class TripItinerary(BaseModel):
-    id: int
     start_date: datetime
     end_date: datetime
     days: List[DayItinerary] = []
