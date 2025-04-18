@@ -129,3 +129,4 @@ async def create_trip(trip_data: TripCreate):
 async def regenerate_activity(trip_id: str, activity_id: int):
 
     
+    pass
