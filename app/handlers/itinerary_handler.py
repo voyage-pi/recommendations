@@ -249,37 +249,27 @@ def create_timeslot_activity_pair(
 
 
 def select_places_for_category(
-    places: List[PlaceInfo],
-    category: str,
+    pre_ranked_places: List[PlaceInfo],
     count: int,
     used_place_ids: Set[str]
 ) -> List[PlaceInfo]:
     """
-    Select places for a category using category-specific ranking weights
+    Select places for a category from pre-ranked places
     while ensuring variety and focusing on important landmarks.
     """
-    if not places or count <= 0:
+    if not pre_ranked_places or count <= 0:
         return []
 
     # Filter out already used places
-    available_places = [p for p in places if p.id not in used_place_ids]
+    available_places = [p for p in pre_ranked_places if p.id not in used_place_ids]
     if not available_places:
         return []
-    
-    # Get ranking weights specific to this category
-    ranking_weights = get_ranking_weights(category)
-    ranking_function = compose_rankings(ranking_weights)
-    
-    # Rank places using the category-specific weights
-
-    ranked_places = rank_places(available_places, ranking_function)
-
     
     # Ensure variety in selection by avoiding too many places of the same specific type
     selected_places = []
     types_seen = set()
     
-    for place in ranked_places:
+    for place in available_places:
         if len(selected_places) >= count:
             break
             
@@ -294,7 +284,7 @@ def select_places_for_category(
     # If we couldn't find enough varied places, just add the highest ranked ones
     if len(selected_places) < count:
         remaining = count - len(selected_places)
-        remaining_places = [p for p in ranked_places if p not in selected_places][:remaining]
+        remaining_places = [p for p in available_places if p not in selected_places][:remaining]
         selected_places.extend(remaining_places)
     
     return selected_places
@@ -320,6 +310,7 @@ def generate_itinerary(
     days = []
     current_date = start_date
     used_place_ids = set()
+    activity_id = 0
 
     while current_date <= end_date:
         day_itinerary = DayItinerary(date=current_date)
@@ -336,7 +327,6 @@ def generate_itinerary(
                 # Use the improved place selection function
                 selected_places = select_places_for_category(
                     places_by_generic_type[category], 
-                    category, 
                     count, 
                     used_place_ids
                 )
@@ -349,6 +339,7 @@ def generate_itinerary(
                         activity_type = get_activity_type(place)
                         
                         activity = Activity(
+                            id=activity_id,
                             place=place,
                             start_time=placeholder_time,
                             end_time=placeholder_time + timedelta(minutes=duration),
@@ -358,6 +349,7 @@ def generate_itinerary(
                         
                         day_activities.append(activity)
                         used_place_ids.add(place.id)
+                        activity_id += 1
 
         # Now assign these activities to time slots and reschedule them
         if day_activities:
@@ -394,6 +386,7 @@ def format_itinerary_response(itinerary: TripItinerary) -> List[Dict]:
         for activity in day.morning_activities + day.afternoon_activities:
             formatted_places.append(
                 {
+                    "activity_id": activity.id,
                     "place_id": activity.place.id,
                     "name": activity.place.name,
                     "start_time": activity.start_time.isoformat(),
