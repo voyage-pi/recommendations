@@ -91,7 +91,7 @@ class TripItinerary(BaseModel):
     start_date: datetime
     end_date: datetime
     days: List[DayItinerary] = []
-
+    name:str
     def __str__(self):
         activies = ""
         for day in self.days:

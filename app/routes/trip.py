@@ -123,7 +123,7 @@ async def create_trip(trip_data: TripCreate):
             generic_type_scores=generic_type_scores,
             budget=trip_data.budget,
         )
-
+        itinerary.name=trip_data.name
         itinerary = api.generate_itinerary(itinerary)
 
         # Get all used place IDs from the itinerary
