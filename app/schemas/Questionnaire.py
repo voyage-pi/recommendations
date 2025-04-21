@@ -44,6 +44,7 @@ class Zone(BaseModel):
 
 class TripCreate(BaseModel):
     trip_id: str
+    name:str
     data: Zone | Place | Road
     tripType:TripType
     questionnaire: List[Answer]

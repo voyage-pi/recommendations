@@ -370,6 +370,7 @@ def generate_itinerary(
 
     return TripItinerary(
         id=random.randint(1000, 9999),  # Placeholder ID
+        name="",
         start_date=start_date,
         end_date=(
             end_date if current_date > end_date else current_date - timedelta(days=1)
