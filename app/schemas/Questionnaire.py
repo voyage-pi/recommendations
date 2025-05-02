@@ -33,6 +33,7 @@ class LatLong(BaseModel):
 class Road(BaseModel):
     origin:LatLong
     destination:LatLong
+    polylines:str
 
 class Place(BaseModel):
     coordinates:LatLong

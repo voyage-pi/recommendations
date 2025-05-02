@@ -1,4 +1,5 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
+from app.utils.distance_funcs import calculate_vector
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
 from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary, Activity
@@ -23,6 +24,10 @@ import json
 from app.utils.redis_utils import redis_cache
 from app.handlers.ranking_handler import pre_rank_places_by_category
 from app.handlers.regenerate_activity_handler import regenerate_activity_handler
+import polyline
+import numpy as np
+import math
+
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -168,7 +173,20 @@ async def create_trip(trip_data: TripCreate):
         print(trip_response)
 
         return trip_response
-
+    elif TripType(trip_type)==TripType.ROAD:
+        origin_cood=data.origin
+        destination_cood=data.destination
+        coordinates_route=polyline.decode(data.polylines)
+        #calculate initial vector
+        od_vector=np.array([destination_cood.latitude-origin_cood.latitude,destination_cood.longitude-origin_cood.longitude])
+        num_segments=len(coordinates_route)
+        segment_vectors=[]
+        for i in range(math.floor(num_segments / 2)):
+            segment_vectors.append(calculate_vector(coordinates_route[i],coordinates_route[i+1]))
+        #break route into sections of more drift...
+        dots=np.dot(np.array(segment_vectors[0:-1:2]),np.transpose(segment_vectors[1:-1:2]))
+        return 0 
+        
 
 @router.post("/{trip_id}/regenerate-activity")
 async def regenerate_activity(trip_id: str, activity: dict):

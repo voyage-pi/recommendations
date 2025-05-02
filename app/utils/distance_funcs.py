@@ -32,3 +32,6 @@ def calculate_distance_matrix(places:List[PlaceInfo]):
             # distance_matrix[c][r]=distance_matrix[r][c]
 
     return distance_matrix
+
+def calculate_vector(ar1:List[float],ar2:List[float])->List[float]:
+    return [ar2[0]-ar1[0],ar2[1]-ar1[1]]
