@@ -1,11 +1,54 @@
-from typing import List
+from typing import List,Tuple
 from app.schemas.Activities import LatLong, PlaceInfo,Stop ,Route
-from app.schemas.Questionnaire import Place
 from app.utils.distance_funcs import calculate_vector, convert_lat_long
 import numpy as np
+import polyline
+from scipy.signal import argrelextrema
+from app.utils.distance_funcs import calculate_distance_lat_long, calculate_vector
 import math
 import uuid
 import requests as request 
+
+def calculate_division_centers(origin_cood,destination_cood,polyline)-> Tuple[List[LatLong],int,int]:
+        # reduces the resolution of points of the polyline, to reduce the number of points in the route
+        resolution_factor=1
+        coordinates_route=polyline.decode(polyline)[0:-1:resolution_factor]
+        #calculate initial vector and unit
+        od_vector=np.array([destination_cood.longitude-origin_cood.longitude,destination_cood.latitude-origin_cood.latitude])
+        od_unit = od_vector/ np.linalg.norm(od_vector)
+        num_segments=len(coordinates_route)
+        segment_vectors=[]
+        for i in range(math.floor(num_segments / 2)):
+            segment_vectors.append(calculate_vector(coordinates_route[i],coordinates_route[i+1]))
+        #break route into a list of vectors
+        segment_vectors=np.array(segment_vectors)
+        # calculate the dot_product of between those vectors and the origin-destination vector
+        dot_products =np.vecdot(np.broadcast_to(od_vector,(segment_vectors.shape[0],2)),segment_vectors) 
+        # project the dot product into the scale of the origin-destination vector 
+        projections = np.expand_dims(dot_products, axis=1) * od_unit 
+        # calculate the orthogonal 
+        orthogonal_vectors = segment_vectors - projections# (n_points, 2)
+        orthogonal_distances = np.linalg.norm(orthogonal_vectors, axis=1)  # (n_points,)
+        deviation_derivative = np.gradient(orthogonal_distances)
+        # First derivative peaks (fastest increasing deviation)
+        second_derivative = np.gradient(deviation_derivative)
+        inflection_points = argrelextrema(second_derivative, np.less)[0]
+        full_distance=int(calculate_distance_lat_long(origin_cood,destination_cood))/1000 # metros 
+        # subdivide the paths into the square_root of the distance in km
+        num_circles=math.floor(math.sqrt(full_distance))+1
+        radius=int(full_distance/num_circles)
+        # to collect all the centers of the circle present on the route and 
+        centers=[]
+        counter=1
+        for idx in inflection_points:
+            # cast for future function implementation
+            p=LatLong(latitude=coordinates_route[idx][0],longitude=coordinates_route[idx][1])
+            # converts to km since the radius is in the same unit 
+            dist_to_origin=calculate_distance_lat_long(origin_cood,p)/1000
+            if dist_to_origin>=counter*radius:
+                centers.append(p)
+                counter+=1
+        return centers, radius,num_circles
 
 def choose_places_road(all_places:List[List[PlaceInfo]],centers :List[LatLong])->List[Stop]:
     vector_centers=[]  

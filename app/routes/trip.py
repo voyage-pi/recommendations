@@ -1,5 +1,4 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
-from app.utils.distance_funcs import calculate_distance_lat_long, calculate_vector
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
 from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
@@ -11,7 +10,7 @@ from app.handlers.places_handler import (
 )
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary, get_polylines_on_places
-from app.handlers.road_trip_handler import  choose_places_road, create_route_stops
+from app.handlers.road_trip_handler import  choose_places_road, create_route_stops,calculate_division_centers
 from typing import Dict, List
 from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import (
@@ -25,10 +24,6 @@ import json
 from app.utils.redis_utils import redis_cache
 from app.handlers.ranking_handler import pre_rank_places_by_category
 from app.handlers.regenerate_activity_handler import regenerate_activity_handler
-import polyline
-import numpy as np
-from scipy.signal import argrelextrema,find_peaks
-import math
 import uuid 
 
 logger = logging.getLogger("uvicorn.error")
@@ -179,44 +174,7 @@ async def create_trip(trip_data: TripCreate):
     elif TripType(trip_type)==TripType.ROAD:
         origin_cood=data.origin
         destination_cood=data.destination
-        # reduces the resolution of points of the polyline, to reduce the number of points in the route
-        resolution_factor=1
-        coordinates_route=polyline.decode(data.polylines)[0:-1:resolution_factor]
-        #calculate initial vector and unit
-        od_vector=np.array([destination_cood.longitude-origin_cood.longitude,destination_cood.latitude-origin_cood.latitude])
-        od_unit = od_vector/ np.linalg.norm(od_vector)
-        num_segments=len(coordinates_route)
-        segment_vectors=[]
-        for i in range(math.floor(num_segments / 2)):
-            segment_vectors.append(calculate_vector(coordinates_route[i],coordinates_route[i+1]))
-        #break route into a list of vectors
-        segment_vectors=np.array(segment_vectors)
-        # calculate the dot_product of between those vectors and the origin-destination vector
-        dot_products =np.vecdot(np.broadcast_to(od_vector,(segment_vectors.shape[0],2)),segment_vectors) 
-        # project the dot product into the scale of the origin-destination vector 
-        projections = np.expand_dims(dot_products, axis=1) * od_unit 
-        # calculate the orthogonal 
-        orthogonal_vectors = segment_vectors - projections# (n_points, 2)
-        orthogonal_distances = np.linalg.norm(orthogonal_vectors, axis=1)  # (n_points,)
-        deviation_derivative = np.gradient(orthogonal_distances)
-        # First derivative peaks (fastest increasing deviation)
-        second_derivative = np.gradient(deviation_derivative)
-        inflection_points = argrelextrema(second_derivative, np.less)[0]
-        full_distance=int(calculate_distance_lat_long(origin_cood,destination_cood))/1000 # metros 
-        # subdivide the paths into the square_root of the distance in km
-        num_circles=math.floor(math.sqrt(full_distance))+1
-        radius=int(full_distance/num_circles)
-        # to collect all the centers of the circle present on the route and 
-        centers=[]
-        counter=1
-        for idx in inflection_points:
-            # cast for future function implementation
-            p=LatLong(latitude=coordinates_route[idx][0],longitude=coordinates_route[idx][1])
-            # converts to km since the radius is in the same unit 
-            dist_to_origin=calculate_distance_lat_long(origin_cood,p)/1000
-            if dist_to_origin>=counter*radius:
-                centers.append(p)
-                counter+=1
+        centers,radius,_ = calculate_division_centers(origin_cood,destination_cood,data.polylines)
         # add the origin and destiantion
         _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
 
