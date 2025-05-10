@@ -1,7 +1,7 @@
 from typing import Any, List, Dict,Optional
 from enum import Enum
 from pydantic import BaseModel
-from app.schemas.Activities import TripItinerary, TemplateType
+from app.schemas.Activities import TripItinerary, TemplateType,RoadItinerary
 from app.schemas.GenericTypes import GenericType
 from datetime import datetime
 
@@ -16,10 +16,6 @@ class Answer(BaseModel):
     value: Any
     type: QuestionType
 
-
-class Coordinates(BaseModel):
-    latitude: float
-    longitude: float
 
 class TripType(Enum):
     PLACE= "place"
@@ -54,6 +50,7 @@ class TripCreate(BaseModel):
     budget: float
 
 class TripResponse(BaseModel):
-    itinerary: TripItinerary
+    itinerary: TripItinerary | RoadItinerary
+    trip_type:str
     template_type: TemplateType
     generic_type_scores: Dict[str, float]

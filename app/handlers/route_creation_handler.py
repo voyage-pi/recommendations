@@ -50,14 +50,13 @@ def create_route_on_itinerary(itineraries: List[TripItinerary]) -> TripItinerary
     choosen_itinerary.days=new_days
     return choosen_itinerary
 
-def get_polylines_on_places(places: List[PlaceInfo]) -> List[Route]:
+def get_polylines_on_places(places: List[PlaceInfo],travelMode="WALK",activate=True) -> List[Route]:
     polylines = []
     threshold=1600 # metros
-    travelMode="WALK"
     for i in range(1, len(places)):
         previous = places[i - 1]
         current = places[i]
-        if calculate_distance_lat_long(previous.location,current.location) >= threshold: 
+        if calculate_distance_lat_long(previous.location,current.location) >= threshold and activate: 
             travelMode="TRASIT"
         url = "http://maps-wrapper:8080/maps"
         request_body = {

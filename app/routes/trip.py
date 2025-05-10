@@ -1,8 +1,8 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
-from app.utils.distance_funcs import calculate_vector
+from app.utils.distance_funcs import calculate_distance_lat_long, calculate_vector
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
-from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary, Activity
+from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
 from datetime import datetime, timedelta
 from app.handlers.places_handler import (
     get_places_recommendations,
@@ -11,6 +11,7 @@ from app.handlers.places_handler import (
 )
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary, get_polylines_on_places
+from app.handlers.road_trip_handler import  choose_places_road, create_route_stops
 from typing import Dict, List
 from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import (
@@ -26,8 +27,9 @@ from app.handlers.ranking_handler import pre_rank_places_by_category
 from app.handlers.regenerate_activity_handler import regenerate_activity_handler
 import polyline
 import numpy as np
+from scipy.signal import argrelextrema,find_peaks
 import math
-
+import uuid 
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -162,6 +164,7 @@ async def create_trip(trip_data: TripCreate):
         trip_response = TripResponse(
             id=trip_id,
             itinerary=routed_choosen_itinerary,
+            trip_type=trip_type.value,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
         )
@@ -170,22 +173,94 @@ async def create_trip(trip_data: TripCreate):
         trip_dict = trip_response.dict()
         redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)  # 24 hours
 
-        print(trip_response)
 
         return trip_response
+
     elif TripType(trip_type)==TripType.ROAD:
         origin_cood=data.origin
         destination_cood=data.destination
-        coordinates_route=polyline.decode(data.polylines)
-        #calculate initial vector
-        od_vector=np.array([destination_cood.latitude-origin_cood.latitude,destination_cood.longitude-origin_cood.longitude])
+        # reduces the resolution of points of the polyline, to reduce the number of points in the route
+        resolution_factor=1
+        coordinates_route=polyline.decode(data.polylines)[0:-1:resolution_factor]
+        #calculate initial vector and unit
+        od_vector=np.array([destination_cood.longitude-origin_cood.longitude,destination_cood.latitude-origin_cood.latitude])
+        od_unit = od_vector/ np.linalg.norm(od_vector)
         num_segments=len(coordinates_route)
         segment_vectors=[]
         for i in range(math.floor(num_segments / 2)):
             segment_vectors.append(calculate_vector(coordinates_route[i],coordinates_route[i+1]))
-        #break route into sections of more drift...
-        dots=np.dot(np.array(segment_vectors[0:-1:2]),np.transpose(segment_vectors[1:-1:2]))
-        return 0 
+        #break route into a list of vectors
+        segment_vectors=np.array(segment_vectors)
+        # calculate the dot_product of between those vectors and the origin-destination vector
+        dot_products =np.vecdot(np.broadcast_to(od_vector,(segment_vectors.shape[0],2)),segment_vectors) 
+        # project the dot product into the scale of the origin-destination vector 
+        projections = np.expand_dims(dot_products, axis=1) * od_unit 
+        # calculate the orthogonal 
+        orthogonal_vectors = segment_vectors - projections# (n_points, 2)
+        orthogonal_distances = np.linalg.norm(orthogonal_vectors, axis=1)  # (n_points,)
+        deviation_derivative = np.gradient(orthogonal_distances)
+        # First derivative peaks (fastest increasing deviation)
+        second_derivative = np.gradient(deviation_derivative)
+        inflection_points = argrelextrema(second_derivative, np.less)[0]
+        full_distance=int(calculate_distance_lat_long(origin_cood,destination_cood))/1000 # metros 
+        # subdivide the paths into the square_root of the distance in km
+        num_circles=math.floor(math.sqrt(full_distance))+1
+        radius=int(full_distance/num_circles)
+        # to collect all the centers of the circle present on the route and 
+        centers=[]
+        counter=1
+        for idx in inflection_points:
+            # cast for future function implementation
+            p=LatLong(latitude=coordinates_route[idx][0],longitude=coordinates_route[idx][1])
+            # converts to km since the radius is in the same unit 
+            dist_to_origin=calculate_distance_lat_long(origin_cood,p)/1000
+            if dist_to_origin>=counter*radius:
+                centers.append(p)
+                counter+=1
+        # add the origin and destiantion
+        _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
+
+        template_type = TemplateType.MODERATE
+
+        # Get batches of place types, with higher-scoring types in smaller batches
+        place_types_batches = batch_included_types_by_score(generic_type_scores)
+        
+        # Exclude all shopping place types
+        excluded_types = (
+            GENERIC_TYPE_MAPPING["shopping"]
+            + GENERIC_TYPE_MAPPING["accommodation"]
+            + GENERIC_TYPE_MAPPING["nightlife"]
+        )
+
+        
+        all_places:List[List[PlaceInfo]]=[]
+        for i in centers:
+            try:
+                places: List[PlaceInfo] = await get_places_recommendations_batched(
+                    latitude=i.latitude,
+                    longitude=i.longitude,
+                    place_types_batches=place_types_batches,
+                    excluded_types=excluded_types,
+                    radius=radius*1000,
+                )
+                all_places.append(places)
+            except Exception as e:
+                # não recebeu nenhum local
+                print(e)
+                continue
+    
+        centers.insert(0,origin_cood)
+        centers.append(destination_cood)
+
+        stops:List[Stop]=choose_places_road(all_places,centers) 
+        origin_place=PlaceInfo(name="origin",location=dict(data.origin),types=[]) 
+        destination_place=PlaceInfo(name="destination",location=dict(data.destination),types=[])
+        stops.insert(0,Stop(id=str(uuid.uuid4()),index=0,place=origin_place)) 
+        stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=destination_place)) 
+        routes= create_route_stops(stops)
+        road:RoadItinerary= RoadItinerary(name=trip_data.name,routes=routes,stops=stops,suggestions=[])
+        response=TripResponse(itinerary=road,generic_type_scores=generic_type_scores,trip_type="road",template_type="moderate")
+        return response 
         
 
 @router.post("/{trip_id}/regenerate-activity")
