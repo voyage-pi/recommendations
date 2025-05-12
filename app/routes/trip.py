@@ -20,6 +20,7 @@ from app.schemas.GenericTypes import (
 import logging
 import os
 import json
+import requests
 from app.utils.redis_utils import redis_cache
 from app.handlers.ranking_handler import pre_rank_places_by_category
 from app.handlers.regenerate_activity_handler import regenerate_activity_handler
@@ -194,11 +195,7 @@ async def regenerate_activity(trip_id: str, activity: dict):
         for category, places in pre_ranked_places_dict.items()
     }
 
-
-
-
     new_activity = regenerate_activity_handler(trip_id, activity_id, pre_ranked_places, itinerary)
-
 
     # Update the activity in the itinerary
     for day in itinerary.days:
