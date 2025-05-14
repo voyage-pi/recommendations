@@ -1,4 +1,4 @@
-from typing import Any, List, Dict,Optional
+from typing import Any, List, Dict, Optional
 from enum import Enum
 from pydantic import BaseModel
 from app.schemas.Activities import TripItinerary, TemplateType
@@ -21,36 +21,50 @@ class Coordinates(BaseModel):
     latitude: float
     longitude: float
 
+
 class TripType(Enum):
-    PLACE= "place"
+    PLACE = "place"
     ROAD = "road"
     ZONE = "zone"
 
+
 class LatLong(BaseModel):
-    latitude:float
-    longitude:float
+    latitude: float
+    longitude: float
+
 
 class Road(BaseModel):
-    origin:LatLong
-    destination:LatLong
+    origin: LatLong
+    destination: LatLong
+
 
 class Place(BaseModel):
-    coordinates:LatLong
-    place_name:str
+    coordinates: LatLong
+    place_name: str
+
 
 class Zone(BaseModel):
-    center:LatLong
-    radius:int
+    center: LatLong
+    radius: int
+
+
+class MustVisitPlace(BaseModel):
+    place_id: str
+    place_name: str
+    coordinates: LatLong
+
 
 class TripCreate(BaseModel):
     trip_id: str
-    name:str
+    name: str
     data: Zone | Place | Road
-    tripType:TripType
+    tripType: TripType
     questionnaire: List[Answer]
     start_date: datetime
     end_date: datetime
     budget: float
+    must_visit_places: Optional[List[MustVisitPlace]] = []
+
 
 class TripResponse(BaseModel):
     itinerary: TripItinerary
