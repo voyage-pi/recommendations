@@ -172,8 +172,10 @@ async def create_trip(trip_data: TripCreate):
         return trip_response
 
     elif TripType(trip_type)==TripType.ROAD:
-        origin_cood=data.origin
-        destination_cood=data.destination
+        origin_place=data.origin
+        dest_place=data.destination
+        origin_cood=origin_place.location
+        destination_cood=dest_place.location
         centers,radius,_ = calculate_division_centers(origin_cood,destination_cood,data.polylines)
         # add the origin and destiantion
         _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
@@ -211,10 +213,8 @@ async def create_trip(trip_data: TripCreate):
         centers.append(destination_cood)
 
         stops:List[Stop]=choose_places_road(all_places,centers) 
-        origin_place=PlaceInfo(name="origin",location=dict(data.origin),types=[]) 
-        destination_place=PlaceInfo(name="destination",location=dict(data.destination),types=[])
         stops.insert(0,Stop(id=str(uuid.uuid4()),index=0,place=origin_place)) 
-        stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=destination_place)) 
+        stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=dest_place)) 
         routes= create_route_stops(stops)
         road:RoadItinerary= RoadItinerary(name=trip_data.name,routes=routes,stops=stops,suggestions=[])
         response=TripResponse(itinerary=road,generic_type_scores=generic_type_scores,trip_type="road",template_type="moderate")

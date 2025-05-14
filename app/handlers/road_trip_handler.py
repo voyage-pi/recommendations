@@ -2,7 +2,7 @@ from typing import List,Tuple
 from app.schemas.Activities import LatLong, PlaceInfo,Stop ,Route
 from app.utils.distance_funcs import calculate_vector, convert_lat_long
 import numpy as np
-import polyline
+import polyline as poly
 from scipy.signal import argrelextrema
 from app.utils.distance_funcs import calculate_distance_lat_long, calculate_vector
 import math
@@ -12,7 +12,7 @@ import requests as request
 def calculate_division_centers(origin_cood,destination_cood,polyline)-> Tuple[List[LatLong],int,int]:
         # reduces the resolution of points of the polyline, to reduce the number of points in the route
         resolution_factor=1
-        coordinates_route=polyline.decode(polyline)[0:-1:resolution_factor]
+        coordinates_route=poly.decode(polyline)[0:-1:resolution_factor]
         #calculate initial vector and unit
         od_vector=np.array([destination_cood.longitude-origin_cood.longitude,destination_cood.latitude-origin_cood.latitude])
         od_unit = od_vector/ np.linalg.norm(od_vector)

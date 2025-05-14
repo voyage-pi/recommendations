@@ -1,8 +1,7 @@
-from typing import Any, List, Dict,Optional
+from typing import List, Union, Any, Annotated,Dict,Literal
 from enum import Enum
-from pydantic import BaseModel
-from app.schemas.Activities import TripItinerary, TemplateType,RoadItinerary
-from app.schemas.GenericTypes import GenericType
+from pydantic import BaseModel,Field
+from app.schemas.Activities import PlaceInfo, TripItinerary, TemplateType,RoadItinerary
 from datetime import datetime
 
 
@@ -27,22 +26,25 @@ class LatLong(BaseModel):
     longitude:float
 
 class Road(BaseModel):
-    origin:LatLong
-    destination:LatLong
-    polylines:str
-
-class Place(BaseModel):
-    coordinates:LatLong
-    place_name:str
+    type : Literal["road"]="road"
+    origin:PlaceInfo 
+    destination:PlaceInfo 
+    polylines: str
 
 class Zone(BaseModel):
-    center:LatLong
-    radius:int
+    type : Literal["zone"]="zone"
+    center: LatLong
+    radius: int
+
+class Place(BaseModel):
+    type : Literal["place"]="place"
+    coordinates: LatLong
+    place_name: str
 
 class TripCreate(BaseModel):
     trip_id: str
     name:str
-    data: Zone | Place | Road
+    data: Union[Zone, Place, Road]= Field(descriminator="type")
     tripType:TripType
     questionnaire: List[Answer]
     start_date: datetime
