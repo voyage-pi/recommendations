@@ -20,7 +20,7 @@ def calculate_distance_lat_long(location1:LatLong,location2:LatLong)->float:
 
     return d 
 
-def calculate_distance_matrix(places:List[PlaceInfo]):
+def calculate_distance_matrix(places:List[PlaceInfo],both=False):
     distance_matrix=[[-1.0 for i in range(len(places))] for j in range(len(places))]
     for c in range(len(places)):
         for r in range(c,len(places)):
@@ -29,6 +29,12 @@ def calculate_distance_matrix(places:List[PlaceInfo]):
             locationR:LatLong=places[r].location
             locationC:LatLong=places[c].location
             distance_matrix[r][c]=calculate_distance_lat_long(locationC,locationR)
-            # distance_matrix[c][r]=distance_matrix[r][c]
+            if both:
+                distance_matrix[c][r]=distance_matrix[r][c]
 
     return distance_matrix
+def convert_lat_long(cood:LatLong):
+    return [cood.longitude,cood.latitude] 
+
+def calculate_vector(ar1:List[float],ar2:List[float])->List[float]:
+    return [ar2[0]-ar1[0],ar2[1]-ar1[1]]

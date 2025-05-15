@@ -102,6 +102,16 @@ class TripItinerary(BaseModel):
                 activies += f"  {activity.activity_type}: {activity.place.name} from {activity.start_time} to {activity.end_time}\n"
         return activies
 
+class Stop(BaseModel):
+    place:PlaceInfo
+    index:int
+    id:str
+
+class RoadItinerary(BaseModel):
+    name:str
+    stops:List[Stop]
+    routes:List[Route]
+    suggestions:List[PlaceInfo]
 
 class TemplateType(str, Enum):
     LIGHT = "light"
