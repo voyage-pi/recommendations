@@ -1,7 +1,7 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
-from app.schemas.Activities import ActivityType, PlaceInfo, TemplateType, TripItinerary, Activity
+from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
 from datetime import datetime, timedelta
 from app.handlers.places_handler import (
     get_places_recommendations,
@@ -10,6 +10,7 @@ from app.handlers.places_handler import (
 )
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary, get_polylines_on_places
+from app.handlers.road_trip_handler import  choose_places_road, create_route_stops,calculate_division_centers
 from typing import Dict, List
 from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import (
@@ -24,6 +25,7 @@ import requests
 from app.utils.redis_utils import redis_cache
 from app.handlers.ranking_handler import pre_rank_places_by_category
 from app.handlers.regenerate_activity_handler import regenerate_activity_handler
+import uuid 
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -158,6 +160,7 @@ async def create_trip(trip_data: TripCreate):
         trip_response = TripResponse(
             id=trip_id,
             itinerary=routed_choosen_itinerary,
+            trip_type=trip_type.value,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
         )
@@ -166,10 +169,58 @@ async def create_trip(trip_data: TripCreate):
         trip_dict = trip_response.dict()
         redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)  # 24 hours
 
-        print(trip_response)
 
         return trip_response
 
+    elif TripType(trip_type)==TripType.ROAD:
+        origin_place=data.origin
+        dest_place=data.destination
+        origin_cood=origin_place.location
+        destination_cood=dest_place.location
+        centers,radius,_ = calculate_division_centers(origin_cood,destination_cood,data.polylines)
+        # add the origin and destiantion
+        _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
+
+        template_type = TemplateType.MODERATE
+
+        # Get batches of place types, with higher-scoring types in smaller batches
+        place_types_batches = batch_included_types_by_score(generic_type_scores)
+        
+        # Exclude all shopping place types
+        excluded_types = (
+            GENERIC_TYPE_MAPPING["shopping"]
+            + GENERIC_TYPE_MAPPING["accommodation"]
+            + GENERIC_TYPE_MAPPING["nightlife"]
+        )
+
+        
+        all_places:List[List[PlaceInfo]]=[]
+        for i in centers:
+            try:
+                places: List[PlaceInfo] = await get_places_recommendations_batched(
+                    latitude=i.latitude,
+                    longitude=i.longitude,
+                    place_types_batches=place_types_batches,
+                    excluded_types=excluded_types,
+                    radius=radius*1000,
+                )
+                all_places.append(places)
+            except Exception as e:
+                # não recebeu nenhum local
+                print(e)
+                continue
+    
+        centers.insert(0,origin_cood)
+        centers.append(destination_cood)
+
+        stops:List[Stop]=choose_places_road(all_places,centers) 
+        stops.insert(0,Stop(id=str(uuid.uuid4()),index=0,place=origin_place)) 
+        stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=dest_place)) 
+        routes= create_route_stops(stops)
+        road:RoadItinerary= RoadItinerary(name=trip_data.name,routes=routes,stops=stops,suggestions=[])
+        response=TripResponse(itinerary=road,generic_type_scores=generic_type_scores,trip_type="road",template_type="moderate")
+        return response 
+        
 
 @router.post("/{trip_id}/regenerate-activity")
 async def regenerate_activity(trip_id: str, activity: dict):
