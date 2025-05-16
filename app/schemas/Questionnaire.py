@@ -1,3 +1,4 @@
+from typing import Any, List, Dict, Optional
 from typing import List, Union, Any, Annotated,Dict,Literal
 from enum import Enum
 from pydantic import BaseModel,Field
@@ -16,16 +17,48 @@ class Answer(BaseModel):
     type: QuestionType
 
 
+class Coordinates(BaseModel):
+    latitude: float
+    longitude: float
+
+      
 class TripType(Enum):
-    PLACE= "place"
+    PLACE = "place"
     ROAD = "road"
     ZONE = "zone"
 
+
 class LatLong(BaseModel):
-    latitude:float
-    longitude:float
+    latitude: float
+    longitude: float
+
 
 class Road(BaseModel):
+    origin: LatLong
+    destination: LatLong
+
+
+class Place(BaseModel):
+    coordinates: LatLong
+    place_name: str
+
+
+class Zone(BaseModel):
+    center: LatLong
+    radius: int
+
+
+class MustVisitPlace(BaseModel):
+    place_id: str
+    place_name: str
+    coordinates: LatLong
+
+
+class TripCreate(BaseModel):
+    trip_id: str
+    name: str
+    data: Zone | Place | Road
+    tripType: TripType
     type : Literal["road"]="road"
     origin:PlaceInfo 
     destination:PlaceInfo 
@@ -51,7 +84,7 @@ class TripCreate(BaseModel):
     end_date: datetime
     budget: float
     keywords: List[str] = []
-    must_visit_places: List[PlaceInfo] = []
+    must_visit_places: Optional[List[MustVisitPlace]] = []
 
 class TripResponse(BaseModel):
     itinerary: TripItinerary | RoadItinerary
