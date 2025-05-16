@@ -1,7 +1,7 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
 from app.handlers.must_see_places_handler import validate_must_visit_places
 from fastapi import APIRouter, HTTPException
-from app.schemas.Questionnaire import MustVisitPlace, TripCreate, TripResponse, TripType
+from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
 from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
 from datetime import datetime, timedelta
 from app.handlers.places_handler import (
@@ -90,7 +90,7 @@ async def create_trip(trip_data: TripCreate):
         
         # api if trip type is place otherwise the data.radius passed  
         radius = redis_cache.get_or_set(f"radius:{data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
-        must_places:List[MustVisitPlace] | None =  trip_data.must_visit_places if "must_visit_places" in trip_data.model_dump() else None
+        must_places:List[PlaceInfo] | None =  trip_data.must_visit_places if "must_visit_places" in trip_data.model_dump() else None
 
 
         # Get latitude and longitude based on trip type
