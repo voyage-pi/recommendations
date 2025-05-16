@@ -15,12 +15,6 @@ class Answer(BaseModel):
     question_id: int
     value: Any
     type: QuestionType
-
-
-class Coordinates(BaseModel):
-    latitude: float
-    longitude: float
-
       
 class TripType(Enum):
     PLACE = "place"
@@ -32,33 +26,12 @@ class LatLong(BaseModel):
     latitude: float
     longitude: float
 
-
-class Road(BaseModel):
-    origin: LatLong
-    destination: LatLong
-
-
-class Place(BaseModel):
-    coordinates: LatLong
-    place_name: str
-
-
-class Zone(BaseModel):
-    center: LatLong
-    radius: int
-
-
 class MustVisitPlace(BaseModel):
     place_id: str
     place_name: str
     coordinates: LatLong
 
-
-class TripCreate(BaseModel):
-    trip_id: str
-    name: str
-    data: Zone | Place | Road
-    tripType: TripType
+class Road(BaseModel):
     type : Literal["road"]="road"
     origin:PlaceInfo 
     destination:PlaceInfo 
