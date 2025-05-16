@@ -63,6 +63,7 @@ class PlaceInfo(BaseModel):
     allows_dogs: Optional[bool] = None
     good_for_children: Optional[bool] = None
     good_for_groups: Optional[bool] = None
+    keyword_match: Optional[bool] = False
 
 
 class Activity(BaseModel):

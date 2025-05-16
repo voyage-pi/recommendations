@@ -203,3 +203,72 @@ def batch_included_types_by_score(generic_types_score) -> List[List[str]]:
         logger.info(f"Batch {i+1} contains {len(batch)} types")
     
     return batches
+
+async def search_places_by_keyword(
+    keyword: str,
+    place_name: str,
+    latitude: float,
+    longitude: float,
+    radius: int = 5000,  # 5km radius
+) -> List[PlaceInfo]:
+    """
+    Search places using a keyword and a place name
+    
+    Args:
+        keyword: Keyword to search for
+        place_name: Name of the place to search in
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+        radius: Search radius in meters
+        
+    Returns:
+        List of places matching the keyword search
+    """
+    query = f"{keyword} in {place_name}"
+    logger.info(f"Searching for places with query: {query}")
+    
+    url = "http://place-wrapper:8080/places/text-search"
+    
+    request_body = {
+        "query": query,
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+        "radius": radius,
+    }
+    
+    response = request.post(url, json=request_body)
+    status = response.status_code
+    
+    if status == 200:
+        responseBody = response.json()
+        places_google = responseBody.get("places", [])
+        places: List[PlaceInfo] = []
+        
+        for data in places_google:
+            place = PlaceInfo(
+                id=data.get("ID"),
+                name=data.get("name"),
+                location=data.get("location"),
+                types=data.get("types", []),
+                photos=data.get("photos", []),
+                accessibility_options=data.get("accessibilityOptions", {}),
+                opening_hours=data.get("OpeningHours", {}),
+                price_range=data.get("priceRange"),
+                rating=data.get("rating"),
+                user_ratings_total=data.get("userRatingCount"),
+                international_phone_number=data.get("internationalPhoneNumber"),
+                national_phone_number=data.get("nationalPhoneNumber"),
+                allows_dogs=data.get("allowsDogs"),
+                good_for_children=data.get("goodForChildren"),
+                good_for_groups=data.get("goodForGroups"),
+                keyword_match=True,  # Mark this place as matching a keyword
+            )
+            places.append(place)
+        
+        logger.info(f"Found {len(places)} places matching keyword '{keyword}'")
+        return places
+    else:
+        logger.error(f"Error response from place-wrapper: {response.text}")
+        return []

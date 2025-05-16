@@ -7,6 +7,7 @@ from app.handlers.places_handler import (
     get_places_recommendations,
     batch_included_types_by_score,
     get_places_recommendations_batched,
+    search_places_by_keyword,
 )
 from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
 from app.handlers.route_creation_handler import create_route_on_itinerary, get_polylines_on_places
@@ -90,15 +91,61 @@ async def create_trip(trip_data: TripCreate):
         radius = redis_cache.get_or_set(f"radius:{data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
 
         logger.info(f"Radius: {radius}")
-
-        # changing the object attributtes path based on the trip type
+        
+        # Get latitude and longitude based on trip type
+        latitude = data.coordinates.latitude if TripType(trip_type) == TripType.PLACE else data.center.latitude
+        longitude = data.coordinates.longitude if TripType(trip_type) == TripType.PLACE else data.center.longitude
+        
+        # Get places from recommendation service
         places: List[PlaceInfo] = await get_places_recommendations_batched(
-            latitude=data.coordinates.latitude if TripType(trip_type) ==TripType.PLACE else data.center.latitude,
-            longitude=data.coordinates.longitude if TripType(trip_type) ==TripType.PLACE else data.center.longitude,
+            latitude=latitude,
+            longitude=longitude,
             place_types_batches=place_types_batches,
             excluded_types=excluded_types,
             radius=radius,
         )
+        
+        # If keywords were provided, search for places by keywords
+        keyword_places: List[PlaceInfo] = []
+        if trip_data.keywords and len(trip_data.keywords) > 0:
+            logger.info(f"Searching for places with {len(trip_data.keywords)} keywords")
+            
+            # Get the place name from trip data
+            place_name = data.place_name if TripType(trip_type) == TripType.PLACE else "this area"
+            
+            # Search for each keyword
+            for keyword in trip_data.keywords:
+                try:
+                    keyword_results = await search_places_by_keyword(
+                        keyword=keyword,
+                        place_name=place_name,
+                        latitude=latitude,
+                        longitude=longitude,
+                        radius=radius
+                    )
+                    
+                    if keyword_results:
+                        logger.info(f"Found {len(keyword_results)} places for keyword '{keyword}'")
+                        keyword_places.extend(keyword_results)
+                except Exception as e:
+                    logger.error(f"Error searching for keyword '{keyword}': {str(e)}")
+            
+            # Deduplicate places by ID
+            seen_ids = set()
+            unique_keyword_places = []
+            
+            for place in keyword_places:
+                if place.id not in seen_ids:
+                    seen_ids.add(place.id)
+                    unique_keyword_places.append(place)
+            
+            logger.info(f"Found {len(unique_keyword_places)} unique places from keywords search")
+            
+            # Add keyword places to regular places
+            # We'll also mark these places as coming from a keyword search
+            for place in unique_keyword_places:
+                if place.id not in [p.id for p in places]:
+                    places.append(place)
 
         # group places by generic type
         # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}

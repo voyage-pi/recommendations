@@ -311,7 +311,13 @@ def generate_itinerary(
     current_date = start_date
     used_place_ids = set()
     activity_id = 0
-
+    
+    # Find keyword-matched places
+    keyword_places = [place for place in places if getattr(place, 'keyword_match', False)]
+    
+    # First day should include at least one keyword place if available
+    include_keyword_place = len(keyword_places) > 0
+    
     while current_date <= end_date:
         day_itinerary = DayItinerary(date=current_date)
 
@@ -322,6 +328,39 @@ def generate_itinerary(
 
         # Select places for the entire day
         day_activities = []
+        
+        # If this is the first day and we have keyword places, make sure to include one
+        if include_keyword_place and current_date.date() == start_date.date():
+            # Find a keyword place that hasn't been used yet
+            available_keyword_places = [p for p in keyword_places if p.id not in used_place_ids]
+            
+            if available_keyword_places:
+                # Choose the keyword place with the highest rating
+                selected_keyword_place = max(
+                    available_keyword_places, 
+                    key=lambda p: p.rating if p.rating is not None else 0
+                )
+                
+                # Add this place first
+                duration = determine_activity_duration(selected_keyword_place)
+                activity_type = get_activity_type(selected_keyword_place)
+                
+                activity = Activity(
+                    id=activity_id,
+                    place=selected_keyword_place,
+                    start_time=datetime.combine(current_date.date(), datetime.min.time()),
+                    end_time=datetime.combine(current_date.date(), datetime.min.time()) + timedelta(minutes=duration),
+                    activity_type=activity_type,
+                    duration=duration,
+                )
+                
+                day_activities.append(activity)
+                used_place_ids.add(selected_keyword_place.id)
+                activity_id += 1
+                
+                # We've included a keyword place, no need to do it again
+                include_keyword_place = False
+        
         for category, count in day_distribution.items():
             if category in places_by_generic_type and count > 0:
                 # Use the improved place selection function
@@ -369,13 +408,12 @@ def generate_itinerary(
             break
 
     return TripItinerary(
-        id=random.randint(1000, 9999),  # Placeholder ID
-        name="",
         start_date=start_date,
         end_date=(
             end_date if current_date > end_date else current_date - timedelta(days=1)
         ),
         days=days,
+        name=""
     )
 
 

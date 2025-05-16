@@ -83,8 +83,8 @@ class TripCreate(BaseModel):
     start_date: datetime
     end_date: datetime
     budget: float
+    keywords: List[str] = []
     must_visit_places: Optional[List[MustVisitPlace]] = []
-
 
 class TripResponse(BaseModel):
     itinerary: TripItinerary | RoadItinerary
