@@ -223,3 +223,80 @@ async def regenerate_activity(trip_id: str, activity: dict):
             "itinerary": itinerary
         }
     }
+
+
+@router.delete("/{trip_id}/delete-activity/{activity_id}")
+async def delete_activity(trip_id: str, activity_id: str):
+    logger.info(f"Deleting activity {activity_id} for trip {trip_id}")
+
+    # get cached trip response
+    cached_trip = redis_cache.get(f"trip:{trip_id}:response")
+    if not cached_trip:
+        raise HTTPException(status_code=404, detail="Trip not found in cache")
+
+    trip_response = TripResponse(**json.loads(cached_trip))
+    itinerary = trip_response.itinerary
+
+    # Debug: Log all activity IDs to identify issues
+    all_ids = []
+    for day in itinerary.days:
+        for act in day.morning_activities:
+            all_ids.append(f"morning: {act.id} (type: {type(act.id).__name__})")
+        for act in day.afternoon_activities:
+            all_ids.append(f"afternoon: {act.id} (type: {type(act.id).__name__})")
+    
+    logger.info(f"Available activity IDs: {all_ids}")
+    logger.info(f"Looking for activity ID: {activity_id} (type: {type(activity_id).__name__})")
+
+    # Find and remove the activity from the itinerary
+    activity_found = False
+    affected_day = None
+    
+    for day in itinerary.days:
+        # Check morning activities
+        for i, act in enumerate(day.morning_activities):
+            # Try different comparisons to handle potential type mismatches
+            if str(act.id) == str(activity_id):
+                logger.info(f"Found activity {activity_id} in morning activities")
+                activity_found = True
+                affected_day = day
+                day.morning_activities.pop(i)
+                break
+        
+        if activity_found:
+            break
+            
+        # Check afternoon activities
+        for i, act in enumerate(day.afternoon_activities):
+            if str(act.id) == str(activity_id):
+                logger.info(f"Found activity {activity_id} in afternoon activities")
+                activity_found = True
+                affected_day = day
+                day.afternoon_activities.pop(i)
+                break
+        
+        if activity_found:
+            break
+    
+    if not activity_found:
+        raise HTTPException(status_code=404, detail=f"Activity with ID {activity_id} not found in itinerary")
+    
+    # Recalculate routes for the affected day
+    if affected_day:
+        all_places = [act.place for act in affected_day.morning_activities + affected_day.afternoon_activities]
+        if len(all_places) > 1:  # Only recalculate if there are at least 2 places
+            polylines_duration_list = get_polylines_on_places(all_places)
+            affected_day.routes = polylines_duration_list
+        else:
+            affected_day.routes = []  # No routes needed if 0 or 1 place
+    
+    # Update the cached trip response
+    trip_response.itinerary = itinerary
+    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_response.dict(), cls=PydanticJSONEncoder), ttl=86400)
+
+    return {
+        "response": {
+            "itinerary": itinerary
+        }
+    }
+
