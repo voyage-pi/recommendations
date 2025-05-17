@@ -296,9 +296,10 @@ def generate_itinerary(
     start_date: datetime,
     end_date: datetime,
     generic_type_scores: Dict[str, float],
+    is_group: bool,
     template_type: TemplateType = TemplateType.MODERATE,
-    must_visit_places:List[PlaceInfo]=[],
-    budget: float = None,
+    must_visit_places: List[PlaceInfo] = [],
+    budget: float = None
 ) -> TripItinerary:
     """Generate a complete trip itinerary with improved landmark selection"""
 
@@ -416,7 +417,8 @@ def generate_itinerary(
             end_date if current_date > end_date else current_date - timedelta(days=1)
         ),
         days=days,
-        name=""
+        name="",
+        is_group=is_group,
     )
 
 
