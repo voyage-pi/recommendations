@@ -5,11 +5,9 @@ from pydantic import BaseModel,Field
 from app.schemas.Activities import PlaceInfo, TripItinerary, TemplateType,RoadItinerary
 from datetime import datetime
 
-
 class QuestionType(str, Enum):
     SCALE = "scale"
     SELECT = "select"
-
 
 class Answer(BaseModel):
     question_id: int
@@ -53,6 +51,7 @@ class TripCreate(BaseModel):
     budget: float
     keywords: List[str] = []
     must_visit_places: Optional[List[PlaceInfo]] = []
+    is_group: bool
 
 class TripResponse(BaseModel):
     itinerary: TripItinerary | RoadItinerary

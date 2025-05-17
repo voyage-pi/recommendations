@@ -178,6 +178,7 @@ async def create_trip(trip_data: TripCreate):
             generic_type_scores=generic_type_scores,
             must_visit_places=mvps,
             budget=trip_data.budget,
+            is_group=trip_data.is_group,
         )
         itinerary.name=trip_data.name
         itinerary = api.generate_itinerary(itinerary)
@@ -216,6 +217,7 @@ async def create_trip(trip_data: TripCreate):
             trip_type=trip_type.value,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
+            is_group=trip_data.is_group,
         )
 
         # Cache the trip response
