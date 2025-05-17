@@ -297,6 +297,7 @@ def generate_itinerary(
     end_date: datetime,
     generic_type_scores: Dict[str, float],
     template_type: TemplateType = TemplateType.MODERATE,
+    must_visit_places:List[PlaceInfo]=[],
     budget: float = None,
 ) -> TripItinerary:
     """Generate a complete trip itinerary with improved landmark selection"""
@@ -363,20 +364,23 @@ def generate_itinerary(
         
         for category, count in day_distribution.items():
             if category in places_by_generic_type and count > 0:
-                # Use the improved place selection function
-                selected_places = select_places_for_category(
-                    places_by_generic_type[category], 
-                    count, 
-                    used_place_ids
-                )
+                # include the must_visit_places to the selected_pl
 
+                # Use the improved place selection function
+                selected_places=select_places_for_category(
+                        places_by_generic_type[category], 
+                        count, 
+                        used_place_ids
+                )
+                selected_places.extend(must_visit_places)
                 # Schedule these places with a placeholder time for now
                 if selected_places:
                     placeholder_time = datetime.combine(current_date.date(), datetime.min.time())
                     for place in selected_places:
+                        if place in must_visit_places:
+                            must_visit_places.remove(place)
                         duration = determine_activity_duration(place)
                         activity_type = get_activity_type(place)
-                        
                         activity = Activity(
                             id=activity_id,
                             place=place,
@@ -385,7 +389,6 @@ def generate_itinerary(
                             activity_type=activity_type,
                             duration=duration,
                         )
-                        
                         day_activities.append(activity)
                         used_place_ids.add(place.id)
                         activity_id += 1

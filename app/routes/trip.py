@@ -1,4 +1,5 @@
 from app.handlers.attribute_handler import questionnaire_to_attributes
+from app.handlers.must_see_places_handler import validate_must_visit_places
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
 from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
@@ -62,11 +63,11 @@ async def create_trip(trip_data: TripCreate):
     trip_type= trip_data.tripType
     data = trip_data.data
     if TripType(trip_type)==TripType.PLACE or TripType(trip_type)==TripType.ZONE:
-
+        
         # List[str], List[str]
         # TODO: maybe remove excluded types - seems useless
         _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
-
+            
         template_type = TemplateType.MODERATE
 
         # Get batches of place types, with higher-scoring types in smaller batches
@@ -78,7 +79,7 @@ async def create_trip(trip_data: TripCreate):
             + GENERIC_TYPE_MAPPING["accommodation"]
             + GENERIC_TYPE_MAPPING["nightlife"]
         )
-
+ 
         # Get the radius based on the place name
         api_key = os.getenv("OPENAI")
         api = OpenAIAPI(api_key)
@@ -89,13 +90,12 @@ async def create_trip(trip_data: TripCreate):
         
         # api if trip type is place otherwise the data.radius passed  
         radius = redis_cache.get_or_set(f"radius:{data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
+        must_places:List[PlaceInfo] | None =  trip_data.must_visit_places if "must_visit_places" in trip_data.model_dump() else None
 
-        logger.info(f"Radius: {radius}")
-        
+
         # Get latitude and longitude based on trip type
         latitude = data.coordinates.latitude if TripType(trip_type) == TripType.PLACE else data.center.latitude
         longitude = data.coordinates.longitude if TripType(trip_type) == TripType.PLACE else data.center.longitude
-        
         # Get places from recommendation service
         places: List[PlaceInfo] = await get_places_recommendations_batched(
             latitude=latitude,
@@ -104,7 +104,7 @@ async def create_trip(trip_data: TripCreate):
             excluded_types=excluded_types,
             radius=radius,
         )
-        
+
         # If keywords were provided, search for places by keywords
         keyword_places: List[PlaceInfo] = []
         if trip_data.keywords and len(trip_data.keywords) > 0:
@@ -163,7 +163,12 @@ async def create_trip(trip_data: TripCreate):
 
         # Pre-rank all places by category
         pre_ranked_places = pre_rank_places_by_category(places_by_type)
+        # get must visit places info then generate the itinerary with them
+        mvps:List[PlaceInfo]=[] 
+        if must_places is not None:
+            mvps.extend(validate_must_visit_places(must_places,LatLong(latitude=latitude,longitude=longitude),radius))
 
+        
         itinerary: TripItinerary = generate_itinerary(
             places=places,
             places_by_generic_type=pre_ranked_places,
@@ -171,6 +176,7 @@ async def create_trip(trip_data: TripCreate):
             end_date=trip_data.end_date,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
+            must_visit_places=mvps,
             budget=trip_data.budget,
         )
         itinerary.name=trip_data.name
