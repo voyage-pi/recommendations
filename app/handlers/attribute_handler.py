@@ -4,7 +4,7 @@ from app.schemas.GenericTypes import GenericType, SPECIFIC_TO_GENERIC
 from enum import Enum
 import json
 from pathlib import Path
-
+import requests as request 
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # Diretório do script atual
 ATTRIBUTES_PATH = BASE_DIR / "attributes" / "attributes_answer.json"
@@ -18,24 +18,28 @@ def questionnaire_to_attributes(answers: List[Answer]) -> Tuple[List[str], List[
     # Categories to ignore scores for
     ignore_score_categories = [GenericType.FOOD, GenericType.SHOPPING, GenericType.TRANSPORTATION, GenericType.ACCOMMODATION, GenericType.NIGHTLIFE]
 
-    with open(ATTRIBUTES_PATH) as file:
-        data = json.load(file)
+    try:
+        url = "http://user-management:8080/questions/"
+        response = request.get(url)
+        data_response=response.json()
+        data={str(q["id"]):q["attributes_recommendations"] for q in data_response}
+        for ans in answers:
+            attrsIncluded, attrsExcluded, scores = answers_attributes(ans, data)
+            included_types.extend(attrsIncluded)
+            excluded_types.extend(attrsExcluded)
+            
+            # Update generic type scores, ignoring specified categories
+            for generic_type, score in scores.items():
+                if generic_type not in ignore_score_categories:
+                    if generic_type in generic_type_scores:
+                        generic_type_scores[generic_type] = max(generic_type_scores[generic_type], score)
+                    else:
+                        generic_type_scores[generic_type] = score
 
-    for ans in answers:
-        attrsIncluded, attrsExcluded, scores = answers_attributes(ans, data)
-        included_types.extend(attrsIncluded)
-        excluded_types.extend(attrsExcluded)
-        
-        # Update generic type scores, ignoring specified categories
-        for generic_type, score in scores.items():
-            if generic_type not in ignore_score_categories:
-                if generic_type in generic_type_scores:
-                    generic_type_scores[generic_type] = max(generic_type_scores[generic_type], score)
-                else:
-                    generic_type_scores[generic_type] = score
-
-    return included_types, excluded_types, generic_type_scores
-
+        return included_types, excluded_types, generic_type_scores
+    except Exception as e :
+        print(f"error on fetching the attributes of questions:{e}")
+        raise e
 
 # Reads the json with the attributes of each question of the forms
 # Then makes the collection of the set of attributes depending on the question type
