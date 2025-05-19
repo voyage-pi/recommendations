@@ -2,7 +2,7 @@ from app.handlers.attribute_handler import questionnaire_to_attributes
 from app.handlers.must_see_places_handler import validate_must_visit_places
 from fastapi import APIRouter, HTTPException
 from app.schemas.Questionnaire import TripCreate, TripResponse, TripType
-from app.schemas.Activities import LatLong, PlaceInfo, RoadItinerary, TemplateType, TripItinerary, Stop
+from app.schemas.Activities import LatLong, PlaceInfo, PriceRange, RoadItinerary, TemplateType, TripItinerary, Stop
 from datetime import datetime, timedelta
 from app.handlers.places_handler import (
     get_places_recommendations,
@@ -10,10 +10,11 @@ from app.handlers.places_handler import (
     get_places_recommendations_batched,
     search_places_by_keyword,
 )
-from app.handlers.itinerary_handler import generate_itinerary, format_itinerary_response
+from app.handlers.itinerary_handler import generate_itinerary 
 from app.handlers.route_creation_handler import create_route_on_itinerary, get_polylines_on_places
 from app.handlers.road_trip_handler import  choose_places_road, create_route_stops,calculate_division_centers
-from typing import Dict, List
+from app.handlers.budget_handler import place_price, fit_places_on_price
+from typing import Dict, List,Tuple
 from app.utils.openai_integration import OpenAIAPI
 from app.schemas.GenericTypes import (
     GenericType,
@@ -168,16 +169,23 @@ async def create_trip(trip_data: TripCreate):
         if must_places is not None:
             mvps.extend(validate_must_visit_places(must_places,LatLong(latitude=latitude,longitude=longitude),radius))
 
-        
+        for_r=places
+        for_r.extend(mvps)
+        # Parse strings to datetime objects
+
+        # Calculate and associate price differences 
+        prices:List[Tuple[PlaceInfo,PriceRange]]=place_price(for_r)
+        # Select the places to be inside the budget
+        new_places,total_range=fit_places_on_price(prices,int(trip_data.budget))
+
         itinerary: TripItinerary = generate_itinerary(
-            places=places,
+            places=new_places,
             places_by_generic_type=pre_ranked_places,
             start_date=trip_data.start_date,
             end_date=trip_data.end_date,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
             must_visit_places=mvps,
-            budget=trip_data.budget,
             is_group=trip_data.is_group,
         )
         itinerary.name=trip_data.name
@@ -203,6 +211,8 @@ async def create_trip(trip_data: TripCreate):
         }
         redis_cache.set(f"trip:{trip_id}:pre_ranked_places", json.dumps(pre_ranked_places_dict), ttl=86400)  # 24 hours
 
+        #add price-range to itinerary
+        itinerary.price_range=total_range
         # temporary solution | in the future generate multiple itineraries
         proposed_itineraries = [itinerary]
 
