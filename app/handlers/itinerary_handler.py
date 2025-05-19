@@ -283,7 +283,7 @@ def select_places_for_category(
     
     # If we couldn't find enough varied places, just add the highest ranked ones
     if len(selected_places) < count:
-        remaining = count - len(selected_places)
+        remaining = int(count - len(selected_places))
         remaining_places = [p for p in available_places if p not in selected_places][:remaining]
         selected_places.extend(remaining_places)
     
