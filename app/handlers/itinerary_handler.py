@@ -253,41 +253,15 @@ def select_places_for_category(
     count: int,
     used_place_ids: Set[str]
 ) -> List[PlaceInfo]:
-    """
-    Select places for a category from pre-ranked places
-    while ensuring variety and focusing on important landmarks.
-    """
     if not pre_ranked_places or count <= 0:
         return []
 
-    # Filter out already used places
     available_places = [p for p in pre_ranked_places if p.id not in used_place_ids]
     if not available_places:
         return []
     
-    # Ensure variety in selection by avoiding too many places of the same specific type
-    selected_places = []
-    types_seen = set()
-    
-    for place in available_places:
-        if len(selected_places) >= count:
-            break
-            
-        # Get the place's types
-        place_types = set(place.types) if place.types else set()
-        
-        # If we've already seen all types but still have slots to fill, add anyway
-        if not types_seen.intersection(place_types) or len(selected_places) < count - 1:
-            selected_places.append(place)
-            types_seen.update(place_types)
-    
-    # If we couldn't find enough varied places, just add the highest ranked ones
-    if len(selected_places) < count:
-        remaining = int(count - len(selected_places))
-        remaining_places = [p for p in available_places if p not in selected_places][:remaining]
-        selected_places.extend(remaining_places)
-    
-    return selected_places
+    # Ensure count is an integer when used for slicing
+    return available_places[:int(count)]
 
 
 def generate_itinerary(

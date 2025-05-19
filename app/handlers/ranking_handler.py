@@ -85,35 +85,10 @@ def rank_by_landmark_status(places: List[PlaceInfo]) -> List[PlaceInfo]:
     return sorted(places, key=get_landmark_score, reverse=True)
 
 def get_ranking_weights(generic_type: str) -> List[Tuple[Callable, float]]:
-    """
-    Returns different ranking weights based on place category
-    """
-    if generic_type in ["cultural", "landmarks"]:
-        return [
-            (rank_by_landmark_status, 0.4),
-            (rank_by_prominence, 0.3),
-            (rank_by_rating, 0.2),
-            (rank_by_accessibility, 0.1)
-        ]
-    elif generic_type in ["outdoor", "nature"]:
-        return [
-            (rank_by_rating, 0.4),
-            (rank_by_accessibility, 0.3),
-            (rank_by_prominence, 0.2),
-            (rank_by_landmark_status, 0.1)
-        ]
-    elif generic_type in ["food", "restaurant"]:
-        return [
-            (rank_by_rating, 0.5),
-            (rank_by_price, 0.3),
-            (rank_by_prominence, 0.2)
-        ]
-    # Default weights for other categories
     return [
-        (rank_by_rating, 0.3),
+        (rank_by_rating, 0.4),
         (rank_by_prominence, 0.3),
-        (rank_by_landmark_status, 0.2),
-        (rank_by_price, 0.2)
+        (rank_by_accessibility, 0.3)
     ]
 
 def compose_rankings(
