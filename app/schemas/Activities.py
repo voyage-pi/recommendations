@@ -114,6 +114,7 @@ class RoadItinerary(BaseModel):
     stops:List[Stop]
     routes:List[Route]
     suggestions:List[PlaceInfo]
+    is_group: bool
 
 class TemplateType(str, Enum):
     LIGHT = "light"
