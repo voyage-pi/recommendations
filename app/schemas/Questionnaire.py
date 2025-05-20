@@ -58,3 +58,5 @@ class TripResponse(BaseModel):
     trip_type:str
     template_type: TemplateType
     generic_type_scores: Dict[str, float]
+    id: str
+    is_group: bool
