@@ -214,6 +214,7 @@ async def create_trip(trip_data: TripCreate):
         trip_response = TripResponse(
             id=trip_id,
             itinerary=routed_choosen_itinerary,
+            type=trip_type.value,
             trip_type=trip_type.value,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
@@ -230,8 +231,6 @@ async def create_trip(trip_data: TripCreate):
         if not hasattr(trip_response, 'template_type') or not trip_response.template_type:
             trip_response.template_type = TemplateType.MODERATE
         
-        if not hasattr(trip_response, 'generic_type_scores') or not trip_response.generic_type_scores:
-            trip_response.generic_type_scores = {"cultural": 0.8, "landmarks": 0.8, "outdoor": 0.7}
         
         if not hasattr(trip_response, 'id') or not trip_response.id:
             trip_response.id = trip_id
@@ -336,9 +335,6 @@ async def regenerate_activity(trip_id: str, activity: dict):
         if "template_type" not in cached_data:
             cached_data["template_type"] = "moderate"
             
-        if "generic_type_scores" not in cached_data:
-            cached_data["generic_type_scores"] = {"cultural": 0.8, "landmarks": 0.8, "outdoor": 0.7}
-            
         if "id" not in cached_data:
             cached_data["id"] = trip_id
             
@@ -405,7 +401,7 @@ async def regenerate_activity(trip_id: str, activity: dict):
             "itinerary": itinerary
         }
     }
-
+    
 
 @router.delete("/{trip_id}/delete-activity/{activity_id}")
 async def delete_activity(trip_id: str, activity_id: str):
@@ -500,8 +496,6 @@ async def delete_activity(trip_id: str, activity_id: str):
     if not hasattr(trip_response, 'template_type') or not trip_response.template_type:
         trip_response.template_type = TemplateType.MODERATE
     
-    if not hasattr(trip_response, 'generic_type_scores') or not trip_response.generic_type_scores:
-        trip_response.generic_type_scores = {"cultural": 0.8, "landmarks": 0.8, "outdoor": 0.7}
     
     if not hasattr(trip_response, 'id') or not trip_response.id:
         trip_response.id = trip_id
