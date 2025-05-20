@@ -90,8 +90,8 @@ async def create_trip(trip_data: TripCreate):
         
         # api if trip type is place otherwise the data.radius passed  
         radius = redis_cache.get_or_set(f"radius:{data.place_name}", get_radius) if TripType(trip_type) ==TripType.PLACE else data.radius
-        must_places:List[PlaceInfo] | None =  trip_data.must_visit_places if "must_visit_places" in trip_data.model_dump() else None
-
+        # Disabling must visit places functionality
+        must_places = None
 
         # Get latitude and longitude based on trip type
         latitude = data.coordinates.latitude if TripType(trip_type) == TripType.PLACE else data.center.latitude
@@ -105,47 +105,8 @@ async def create_trip(trip_data: TripCreate):
             radius=radius,
         )
 
-        # If keywords were provided, search for places by keywords
+        # Disabling keywords functionality
         keyword_places: List[PlaceInfo] = []
-        if trip_data.keywords and len(trip_data.keywords) > 0:
-            logger.info(f"Searching for places with {len(trip_data.keywords)} keywords")
-            
-            # Get the place name from trip data
-            place_name = data.place_name if TripType(trip_type) == TripType.PLACE else "this area"
-            
-            # Search for each keyword
-            for keyword in trip_data.keywords:
-                try:
-                    keyword_results = await search_places_by_keyword(
-                        keyword=keyword,
-                        place_name=place_name,
-                        latitude=latitude,
-                        longitude=longitude,
-                        radius=radius
-                    )
-                    
-                    if keyword_results:
-                        logger.info(f"Found {len(keyword_results)} places for keyword '{keyword}'")
-                        keyword_places.extend(keyword_results)
-                except Exception as e:
-                    logger.error(f"Error searching for keyword '{keyword}': {str(e)}")
-            
-            # Deduplicate places by ID
-            seen_ids = set()
-            unique_keyword_places = []
-            
-            for place in keyword_places:
-                if place.id not in seen_ids:
-                    seen_ids.add(place.id)
-                    unique_keyword_places.append(place)
-            
-            logger.info(f"Found {len(unique_keyword_places)} unique places from keywords search")
-            
-            # Add keyword places to regular places
-            # We'll also mark these places as coming from a keyword search
-            for place in unique_keyword_places:
-                if place.id not in [p.id for p in places]:
-                    places.append(place)
 
         # group places by generic type
         # {"cultural": [PlaceInfo, PlaceInfo], "outdoor": [PlaceInfo]}
@@ -163,11 +124,9 @@ async def create_trip(trip_data: TripCreate):
 
         # Pre-rank all places by category
         pre_ranked_places = pre_rank_places_by_category(places_by_type)
-        # get must visit places info then generate the itinerary with them
-        mvps:List[PlaceInfo]=[] 
-        if must_places is not None:
-            mvps.extend(validate_must_visit_places(must_places,LatLong(latitude=latitude,longitude=longitude),radius))
-
+        
+        # Disabling must visit places in itinerary generation
+        mvps = []
         
         itinerary: TripItinerary = generate_itinerary(
             places=places,
