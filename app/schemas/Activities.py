@@ -94,6 +94,7 @@ class TripItinerary(BaseModel):
     days: List[DayItinerary] = []
     name:str
     is_group: bool
+    
     def __str__(self):
         activies = ""
         for day in self.days:
@@ -114,6 +115,7 @@ class RoadItinerary(BaseModel):
     stops:List[Stop]
     routes:List[Route]
     suggestions:List[PlaceInfo]
+    is_group: bool
 
 class TemplateType(str, Enum):
     LIGHT = "light"
