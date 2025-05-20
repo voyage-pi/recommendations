@@ -363,6 +363,7 @@ async def regenerate_activity(trip_id: str, activity: dict):
     }
 
     new_activity = regenerate_activity_handler(trip_id, activity_id, pre_ranked_places, itinerary)
+    print(new_activity.place.name)
 
     # Update the activity in the itinerary
     for day in itinerary.days:
