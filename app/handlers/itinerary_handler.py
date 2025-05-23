@@ -320,7 +320,7 @@ def generate_itinerary(
     # First day should include at least one keyword place if available
     include_keyword_place = len(keyword_places) > 0
     
-    while current_date <= end_date:
+    while current_date < end_date:
         day_itinerary = DayItinerary(date=current_date)
 
         # Get distribution of activities by type for the entire day
@@ -413,9 +413,7 @@ def generate_itinerary(
 
     return TripItinerary(
         start_date=start_date,
-        end_date=(
-            end_date if current_date > end_date else current_date - timedelta(days=1)
-        ),
+        end_date=end_date,
         days=days,
         name="",
         is_group=is_group,
