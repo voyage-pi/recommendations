@@ -224,68 +224,107 @@ async def create_trip(trip_data: TripCreate):
         trip_response = TripResponse(
             id=trip_id,
             itinerary=routed_choosen_itinerary,
+            type=trip_type.value,
             trip_type=trip_type.value,
             template_type=template_type,
             generic_type_scores=generic_type_scores,
             is_group=trip_data.is_group,
         )
 
-        # Cache the trip response
+        # Update the cached trip response
+        trip_response.itinerary = itinerary
+        
+        # Ensure all required fields are set before saving
+        if not hasattr(trip_response, 'trip_type') or not trip_response.trip_type:
+            trip_response.trip_type = "place"  # Default to place if missing
+        
+        if not hasattr(trip_response, 'template_type') or not trip_response.template_type:
+            trip_response.template_type = TemplateType.MODERATE
+        
+        
+        if not hasattr(trip_response, 'id') or not trip_response.id:
+            trip_response.id = trip_id
+        
+        # Convert to dict and save to cache
         trip_dict = trip_response.dict()
-        redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)  # 24 hours
-
+        redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
 
         return trip_response
 
     elif TripType(trip_type)==TripType.ROAD:
-        origin_place=data.origin
-        dest_place=data.destination
-        origin_cood=origin_place.location
-        destination_cood=dest_place.location
-        centers,radius,_ = calculate_division_centers(origin_cood,destination_cood,data.polylines)
-        # add the origin and destiantion
-        _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
-
-        template_type = TemplateType.MODERATE
-
-        # Get batches of place types, with higher-scoring types in smaller batches
-        place_types_batches = batch_included_types_by_score(generic_type_scores)
-        
-        # Exclude all shopping place types
-        excluded_types = (
-            GENERIC_TYPE_MAPPING["shopping"]
-            + GENERIC_TYPE_MAPPING["accommodation"]
-            + GENERIC_TYPE_MAPPING["nightlife"]
-        )
-
-        
-        all_places:List[List[PlaceInfo]]=[]
-        for i in centers:
-            try:
-                places: List[PlaceInfo] = await get_places_recommendations_batched(
-                    latitude=i.latitude,
-                    longitude=i.longitude,
-                    place_types_batches=place_types_batches,
-                    excluded_types=excluded_types,
-                    radius=radius*1000,
+        try:
+            # Ensure required fields are present
+            if not hasattr(data, 'origin') or not hasattr(data, 'destination') or not hasattr(data, 'polylines'):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Road trip requires origin, destination, and polylines fields"
                 )
-                all_places.append(places)
-            except Exception as e:
-                # não recebeu nenhum local
-                print(e)
-                continue
-    
-        centers.insert(0,origin_cood)
-        centers.append(destination_cood)
+                
+            origin_place=data.origin
+            dest_place=data.destination
+            origin_cood=origin_place.location
+            destination_cood=dest_place.location
+            centers,radius,_ = calculate_division_centers(origin_cood,destination_cood,data.polylines)
+            # add the origin and destiantion
+            _, _, generic_type_scores = questionnaire_to_attributes(trip_data.questionnaire)
 
-        stops:List[Stop]=choose_places_road(all_places,centers) 
-        stops.insert(0,Stop(id=str(uuid.uuid4()),index=0,place=origin_place)) 
-        stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=dest_place)) 
-        routes= create_route_stops(stops)
-        road:RoadItinerary= RoadItinerary(name=trip_data.name,routes=routes,stops=stops,suggestions=[])
-        response=TripResponse(itinerary=road,generic_type_scores=generic_type_scores,trip_type="road",template_type="moderate")
-        return response 
+            template_type = TemplateType.MODERATE
+
+            # Get batches of place types, with higher-scoring types in smaller batches
+            place_types_batches = batch_included_types_by_score(generic_type_scores)
+            
+            # Exclude all shopping place types
+            excluded_types = (
+                GENERIC_TYPE_MAPPING["shopping"]
+                + GENERIC_TYPE_MAPPING["accommodation"]
+                + GENERIC_TYPE_MAPPING["nightlife"]
+            )
+
+            
+            all_places:List[List[PlaceInfo]]=[]
+            for i in centers:
+                try:
+                    places: List[PlaceInfo] = await get_places_recommendations_batched(
+                        latitude=i.latitude,
+                        longitude=i.longitude,
+                        place_types_batches=place_types_batches,
+                        excluded_types=excluded_types,
+                        radius=radius*1000,
+                    )
+                    all_places.append(places)
+                except Exception as e:
+                    # não recebeu nenhum local
+                    logger.error(f"Error getting places: {str(e)}")
+                    continue
         
+            centers.insert(0,origin_cood)
+            centers.append(destination_cood)
+
+            stops:List[Stop]=choose_places_road(all_places,centers) 
+            stops.insert(0,Stop(id=str(uuid.uuid4()),index=0,place=origin_place)) 
+            stops.append(Stop(id=str(uuid.uuid4()),index=len(stops),place=dest_place)) 
+            routes= create_route_stops(stops)
+            road:RoadItinerary= RoadItinerary(
+                name=trip_data.name,
+                routes=routes,
+                stops=stops,
+                suggestions=[],
+                is_group=trip_data.is_group
+            )
+            
+            response=TripResponse(
+                itinerary=road,
+                generic_type_scores=generic_type_scores,
+                trip_type="road",
+                template_type=template_type,
+                id=trip_id,
+                is_group=trip_data.is_group
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error creating road trip: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Failed to create road trip: {str(e)}")
+
 
 @router.post("/{trip_id}/regenerate-activity")
 async def regenerate_activity(trip_id: str, activity: dict):
@@ -297,8 +336,26 @@ async def regenerate_activity(trip_id: str, activity: dict):
     if not cached_trip:
         raise HTTPException(status_code=404, detail="Trip not found in cache")
 
-    trip_response = TripResponse(**json.loads(cached_trip))
-    itinerary = trip_response.itinerary
+    try:
+        cached_data = json.loads(cached_trip)
+        # Ensure required fields exist
+        if "trip_type" not in cached_data:
+            cached_data["trip_type"] = "place"  # Default to place if missing
+            
+        if "template_type" not in cached_data:
+            cached_data["template_type"] = "moderate"
+            
+        if "id" not in cached_data:
+            cached_data["id"] = trip_id
+            
+        if "is_group" not in cached_data:
+            cached_data["is_group"] = False
+        
+        trip_response = TripResponse(**cached_data)
+        itinerary = trip_response.itinerary
+    except Exception as e:
+        logger.error(f"Error loading cached trip data: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid trip data in cache: {str(e)}")
 
     # get cached pre-ranked places
     cached_pre_ranked_places = redis_cache.get(f"trip:{trip_id}:pre_ranked_places")
@@ -312,6 +369,7 @@ async def regenerate_activity(trip_id: str, activity: dict):
     }
 
     new_activity = regenerate_activity_handler(trip_id, activity_id, pre_ranked_places, itinerary)
+    print(new_activity.place.name)
 
     # Update the activity in the itinerary
     for day in itinerary.days:
@@ -332,14 +390,28 @@ async def regenerate_activity(trip_id: str, activity: dict):
 
     # Update the cached trip response
     trip_response.itinerary = itinerary
-    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_response.dict(), cls=PydanticJSONEncoder), ttl=86400)
+    
+    # Ensure all required fields are set before saving
+    if not hasattr(trip_response, 'trip_type') or not trip_response.trip_type:
+        trip_response.trip_type = "place"  # Default to place if missing
+        
+    if not hasattr(trip_response, 'template_type') or not trip_response.template_type:
+        trip_response.template_type = TemplateType.MODERATE
+    
+    
+    if not hasattr(trip_response, 'id') or not trip_response.id:
+        trip_response.id = trip_id
+    
+    # Convert to dict and save to cache
+    trip_dict = trip_response.dict()
+    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
 
     return {
         "response": {
             "itinerary": itinerary
         }
     }
-
+    
 
 @router.delete("/{trip_id}/delete-activity/{activity_id}")
 async def delete_activity(trip_id: str, activity_id: str):
@@ -350,8 +422,26 @@ async def delete_activity(trip_id: str, activity_id: str):
     if not cached_trip:
         raise HTTPException(status_code=404, detail="Trip not found in cache")
 
-    trip_response = TripResponse(**json.loads(cached_trip))
-    itinerary = trip_response.itinerary
+    try:
+        cached_data = json.loads(cached_trip)
+        # Ensure required fields exist
+        if "trip_type" not in cached_data:
+            cached_data["trip_type"] = "place"  # Default to place if missing
+        
+        if "template_type" not in cached_data:
+            cached_data["template_type"] = "moderate"
+            
+        if "id" not in cached_data:
+            cached_data["id"] = trip_id
+            
+        if "is_group" not in cached_data:
+            cached_data["is_group"] = False
+        
+        trip_response = TripResponse(**cached_data)
+        itinerary = trip_response.itinerary
+    except Exception as e:
+        logger.error(f"Error loading cached trip data: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid trip data in cache: {str(e)}")
 
     # Debug: Log all activity IDs to identify issues
     all_ids = []
@@ -408,7 +498,21 @@ async def delete_activity(trip_id: str, activity_id: str):
     
     # Update the cached trip response
     trip_response.itinerary = itinerary
-    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_response.dict(), cls=PydanticJSONEncoder), ttl=86400)
+    
+    # Ensure all required fields are set before saving
+    if not hasattr(trip_response, 'trip_type') or not trip_response.trip_type:
+        trip_response.trip_type = "place"  # Default to place if missing
+        
+    if not hasattr(trip_response, 'template_type') or not trip_response.template_type:
+        trip_response.template_type = TemplateType.MODERATE
+    
+    
+    if not hasattr(trip_response, 'id') or not trip_response.id:
+        trip_response.id = trip_id
+    
+    # Convert to dict and save to cache
+    trip_dict = trip_response.dict()
+    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
 
     return {
         "response": {
