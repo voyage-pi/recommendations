@@ -14,20 +14,18 @@ def rank_by_rating(places: List[PlaceInfo]) -> List[PlaceInfo]:
     return sorted_rated_places + unrated_places
 
 def rank_by_price(places: List[PlaceInfo]) -> List[PlaceInfo]:
-    """Ranks places by their price range"""
-    # Define price range order (from cheapest to most expensive)
+    """Ranks places by their price level"""
     price_order = {
-        "FREE": 0,
-        "INEXPENSIVE": 1,
-        "MODERATE": 2,
-        "EXPENSIVE": 3,
-        "VERY_EXPENSIVE": 4
+        "FREE": 0.0,
+        "INEXPENSIVE": 1.0,
+        "MODERATE": 2.0,
+        "EXPENSIVE": 3.0,
+        "VERY_EXPENSIVE": 4.0
     }
-    
-    # Sort places by price range
+
     return sorted(
         places,
-        key=lambda x: price_order.get(x.price_range, float('inf'))
+        key=lambda x: price_order.get(x.price_level, float('inf'))
     )
 
 def rank_by_accessibility(places: List[PlaceInfo]) -> List[PlaceInfo]:
