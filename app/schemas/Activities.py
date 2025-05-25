@@ -46,6 +46,10 @@ class LatLong(BaseModel):
     latitude: float
     longitude: float
 
+class PriceRange(BaseModel):
+    start_price:float
+    end_price:float
+    currency:str
 
 class PlaceInfo(BaseModel):
     id: Optional[str] = None
@@ -55,7 +59,8 @@ class PlaceInfo(BaseModel):
     photos: Optional[List] = None
     accessibility_options: Optional[Dict] = None
     opening_hours: Optional[Dict] = None
-    price_range: Optional[str] = None
+    price_range: Optional[PriceRange] = None
+    price_level: Optional[str] = None
     rating: Optional[float] = None
     user_ratings_total: Optional[int] = None
     international_phone_number: Optional[str] = None
@@ -94,7 +99,7 @@ class TripItinerary(BaseModel):
     days: List[DayItinerary] = []
     name:str
     is_group: bool
-    
+    price_range:Optional[PriceRange] =None
     def __str__(self):
         activies = ""
         for day in self.days:
