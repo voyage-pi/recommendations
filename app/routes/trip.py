@@ -209,7 +209,7 @@ async def create_trip(trip_data: TripCreate):
             category: [place.dict() for place in places]
             for category, places in non_used_pre_ranked_places.items()
         }
-        redis_cache.set(f"trip:{trip_id}:pre_ranked_places", json.dumps(pre_ranked_places_dict), ttl=86400)  # 24 hours
+        redis_cache.set(f"trip:{trip_id}:pre_ranked_places", json.dumps(pre_ranked_places_dict), ttl=604800)  # 7 days
 
         #add price-range to itinerary
         itinerary.price_range=total_range
@@ -247,7 +247,7 @@ async def create_trip(trip_data: TripCreate):
         
         # Convert to dict and save to cache
         trip_dict = trip_response.dict()
-        redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
+        redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=604800)
 
         return trip_response
 
@@ -404,7 +404,7 @@ async def regenerate_activity(trip_id: str, activity: dict):
     
     # Convert to dict and save to cache
     trip_dict = trip_response.dict()
-    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
+    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=604800)
 
     return {
         "response": {
@@ -512,7 +512,7 @@ async def delete_activity(trip_id: str, activity_id: str):
     
     # Convert to dict and save to cache
     trip_dict = trip_response.dict()
-    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=86400)
+    redis_cache.set(f"trip:{trip_id}:response", json.dumps(trip_dict, cls=PydanticJSONEncoder), ttl=604800)
 
     return {
         "response": {

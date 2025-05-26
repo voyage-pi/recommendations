@@ -67,7 +67,7 @@ def regenerate_activity_handler(trip_id: str, activity_id: int, places: dict, it
                 category: [place.dict() for place in places]
                 for category, places in places.items()
             }
-            redis_cache.set(f"trip:{trip_id}:pre_ranked_places", json.dumps(places_dict, cls=PydanticJSONEncoder), ttl=86400)
+            redis_cache.set(f"trip:{trip_id}:pre_ranked_places", json.dumps(places_dict, cls=PydanticJSONEncoder), ttl=604800)
 
     current_activity = get_current_activity()
     if not current_activity:
