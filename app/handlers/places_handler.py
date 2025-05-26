@@ -49,7 +49,11 @@ async def get_places_recommendations(
                 photos=data.get("photos", []),
                 accessibility_options=data.get("accessibilityOptions", {}),
                 opening_hours=data.get("OpeningHours", {}),
-                price_range=data.get("priceRange"),
+                price_range=data.get("priceRange") if isinstance(data.get("priceRange"), dict) else {
+                    "start_price": 0.0,
+                    "end_price": 0.0,
+                    "currency": "EUR"
+                },
                 rating=data.get("rating"),
                 user_ratings_total=data.get("userRatingCount"),
                 international_phone_number=data.get("internationalPhoneNumber"),
@@ -255,7 +259,11 @@ async def search_places_by_keyword(
                 photos=data.get("photos", []),
                 accessibility_options=data.get("accessibilityOptions", {}),
                 opening_hours=data.get("OpeningHours", {}),
-                price_range=data.get("priceRange"),
+                price_range=data.get("priceRange") if isinstance(data.get("priceRange"), dict) else {
+                    "start_price": 0.0,
+                    "end_price": 0.0,
+                    "currency": "EUR"
+                },
                 rating=data.get("rating"),
                 user_ratings_total=data.get("userRatingCount"),
                 international_phone_number=data.get("internationalPhoneNumber"),
