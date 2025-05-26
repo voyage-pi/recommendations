@@ -262,7 +262,7 @@ async def search_places_by_keyword(
                 price_range=data.get("priceRange") if isinstance(data.get("priceRange"), dict) else {
                     "start_price": 0.0,
                     "end_price": 0.0,
-                    "currency": "USD"
+                    "currency": "EUR"
                 },
                 rating=data.get("rating"),
                 user_ratings_total=data.get("userRatingCount"),
