@@ -365,15 +365,25 @@ def generate_itinerary(
         
         for category, count in day_distribution.items():
             if category in places_by_generic_type and count > 0:
-                # include the must_visit_places to the selected_pl
-
                 # Use the improved place selection function
                 selected_places=select_places_for_category(
                         places_by_generic_type[category], 
                         count, 
                         used_place_ids
                 )
-                selected_places.extend(must_visit_places)
+                
+                # Add must visit places that haven't been used yet and aren't already selected
+                selected_place_ids = {place.id for place in selected_places}
+                # Also check against places already added to today's activities (like keyword places)
+                day_activity_place_ids = {activity.place.id for activity in day_activities}
+                available_must_visit = [
+                    place for place in must_visit_places 
+                    if place.id not in used_place_ids 
+                    and place.id not in selected_place_ids
+                    and place.id not in day_activity_place_ids
+                ]
+                selected_places.extend(available_must_visit)
+                
                 # Schedule these places with a placeholder time for now
                 if selected_places:
                     placeholder_time = datetime.combine(current_date.date(), datetime.min.time())
