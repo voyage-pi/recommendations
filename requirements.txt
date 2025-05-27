@@ -1,4 +1,10 @@
 fastapi[standard]
 uvicorn
+requests
 typer
 python-dotenv
+numpy
+openai
+redis
+polyline
+scipy

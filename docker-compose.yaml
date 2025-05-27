@@ -1,14 +1,14 @@
 services:
   recommendations:
     build: .
-    container_name: ${SERVICE_NAME}
+    container_name: recommendations
     environment:
       - ENV_VAR=example
-    volumes:
-      - ./app:/app
-  redis:
+    depends_on:
+      - recommendations_cache
+  recommendations_cache:
     image: "redis:alpine"
-    container_name: redis_cache
+    container_name: recommendations_cache
     restart: always
     ports:
       - "6379:6379"
