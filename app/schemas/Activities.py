@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 from enum import Enum
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 import json
 import os
 
@@ -69,6 +69,18 @@ class PlaceInfo(BaseModel):
     good_for_children: Optional[bool] = None
     good_for_groups: Optional[bool] = None
     keyword_match: Optional[bool] = False
+
+    @root_validator(pre=True)
+    def handle_place_id_field(cls, values):
+        """Handle both 'id' and 'place_id' fields from different sources"""
+        if isinstance(values, dict):
+            # If id is None or missing, try to use place_id
+            if values.get('id') is None and 'place_id' in values:
+                values['id'] = values['place_id']
+        return values
+    
+    class Config:
+        extra = "ignore"  # Ignore extra fields like 'place_id'
 
 
 class Activity(BaseModel):
